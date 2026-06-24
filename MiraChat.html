@@ -1,0 +1,1042 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>میرا | چت با داده‌هایت</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+        :root {
+            --teal: #2cc9b0;
+            --teal-light: #a3f7e6;
+            --teal-dark: #198f7c;
+            --teal-darker: #0f6052;
+            --bg: #030b0b;
+            --bg-sidebar: rgba(4, 16, 16, 0.98);
+            --bg-card: rgba(8, 28, 28, 0.75);
+            --bg-msg-ai: rgba(10, 32, 32, 0.9);
+            --bg-msg-user: linear-gradient(135deg, #1a7a6a, #0f5546);
+            --border: rgba(44, 201, 176, 0.18);
+            --border-bright: rgba(44, 201, 176, 0.5);
+            --text: #eef5f5;
+            --muted: #7aaeaa;
+            --sidebar-w: 280px;
+        }
+        html, body { height: 100%; }
+        body { font-family: 'Vazirmatn', sans-serif; background: var(--bg); color: var(--text); line-height: 1.6; overflow: hidden; }
+        ::-webkit-scrollbar { width: 4px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: rgba(44,201,176,0.3); border-radius: 10px; }
+
+        /* ===== LAYOUT ===== */
+        .layout { display: flex; height: 100vh; overflow: hidden; }
+
+        /* ===== OVERLAY BACKDROP ===== */
+        .sidebar-backdrop {
+            display: none; position: fixed; inset: 0; z-index: 90;
+            background: rgba(0,0,0,0.55); backdrop-filter: blur(2px);
+        }
+        .sidebar-backdrop.visible { display: block; }
+
+        /* ===== SIDEBAR (overlay from right) ===== */
+        .sidebar {
+            position: fixed; top: 0; right: 0; height: 100%; width: var(--sidebar-w);
+            background: var(--bg-sidebar); border-left: 1px solid var(--border);
+            display: flex; flex-direction: column; z-index: 100;
+            transform: translateX(0); transition: transform 0.32s cubic-bezier(.4,0,.2,1);
+        }
+        .sidebar.hidden { transform: translateX(100%); }
+
+        .sidebar-top { padding: 1.2rem 1.1rem 0.9rem; border-bottom: 1px solid var(--border); }
+        .sidebar-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem; }
+        .sidebar-title { font-size: 0.95rem; font-weight: 700; color: var(--teal-light); }
+        .sidebar-close { background: transparent; border: none; color: var(--muted); font-size: 1rem; cursor: pointer; padding: 0.3rem; border-radius: 0.4rem; transition: all 0.18s; }
+        .sidebar-close:hover { color: var(--teal); background: rgba(44,201,176,0.1); }
+        .new-chat-btn {
+            display: flex; align-items: center; justify-content: center; gap: 0.55rem; width: 100%;
+            padding: 0.65rem 1rem; border-radius: 0.9rem;
+            background: rgba(44,201,176,0.1); border: 1px solid var(--border);
+            color: var(--teal-light); font-family: inherit; font-size: 0.88rem; font-weight: 600;
+            cursor: pointer; transition: all 0.2s;
+        }
+        .new-chat-btn:hover { background: rgba(44,201,176,0.18); border-color: var(--teal); }
+
+        .history-scroll { flex: 1; overflow-y: auto; padding: 0.8rem; }
+        .history-group-label { font-size: 0.68rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.1em; padding: 0.5rem 0.4rem 0.25rem; margin-top: 0.3rem; }
+        .history-item {
+            display: flex; align-items: center; gap: 0.5rem;
+            padding: 0.55rem 0.7rem; border-radius: 0.75rem; cursor: pointer;
+            border: 1px solid transparent; transition: all 0.18s; margin-bottom: 0.15rem;
+        }
+        .history-item:hover { background: rgba(44,201,176,0.07); border-color: var(--border); }
+        .history-item.active { background: rgba(44,201,176,0.13); border-color: rgba(44,201,176,0.35); }
+        .history-title { flex: 1; font-size: 0.83rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: #c8e8e4; }
+        .history-item.active .history-title { color: var(--teal-light); }
+        .history-delete { opacity: 0; color: #ff8a7a; background: none; border: none; cursor: pointer; font-size: 0.75rem; padding: 0.2rem; transition: opacity 0.15s; flex-shrink: 0; }
+        .history-item:hover .history-delete { opacity: 1; }
+        .empty-history { text-align: center; color: var(--muted); font-size: 0.82rem; padding: 2.5rem 1rem; }
+
+        .sidebar-bottom { padding: 0.9rem 1.1rem; border-top: 1px solid var(--border); }
+        .back-link { display: flex; align-items: center; gap: 0.5rem; color: var(--muted); text-decoration: none; font-size: 0.82rem; transition: color 0.2s; padding: 0.5rem 0; }
+        .back-link:hover { color: var(--teal); }
+
+        /* ===== MAIN ===== */
+        .chat-main { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+
+        /* Top bar */
+        .chat-topbar {
+            height: 58px; flex-shrink: 0; display: flex; align-items: center;
+            justify-content: space-between; padding: 0 1.2rem;
+            background: rgba(3,11,11,0.92); backdrop-filter: blur(14px);
+            border-bottom: 1px solid var(--border); z-index: 10;
+        }
+        .topbar-left { display: flex; align-items: center; gap: 0.75rem; }
+        .topbar-logo { display: flex; align-items: center; gap: 0.5rem; text-decoration: none; }
+        .topbar-logo-svg { width: 26px; height: 26px; }
+        .topbar-logo-name { font-size: 1.15rem; font-weight: 800; background: linear-gradient(135deg, var(--teal-light), var(--teal)); -webkit-background-clip: text; background-clip: text; color: transparent; }
+        .chat-title-chip { font-size: 0.8rem; color: var(--muted); background: rgba(44,201,176,0.07); border: 1px solid var(--border); padding: 0.2rem 0.7rem; border-radius: 2rem; max-width: 200px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .topbar-right { display: flex; align-items: center; gap: 0.6rem; }
+        .connection-pill { display: flex; align-items: center; gap: 0.4rem; background: rgba(44,201,176,0.07); border: 1px solid var(--border); padding: 0.28rem 0.75rem; border-radius: 2rem; font-size: 0.73rem; color: var(--teal); }
+        .connection-dot { width: 5px; height: 5px; border-radius: 50%; background: var(--teal); animation: blink 2s infinite; }
+        @keyframes blink { 0%,100%{opacity:1;} 50%{opacity:0.25;} }
+        .history-toggle-btn {
+            display: flex; align-items: center; gap: 0.4rem;
+            background: rgba(44,201,176,0.07); border: 1px solid var(--border);
+            color: var(--muted); font-size: 0.8rem; cursor: pointer;
+            padding: 0.35rem 0.85rem; border-radius: 2rem; font-family: inherit;
+            transition: all 0.2s;
+        }
+        .history-toggle-btn:hover { color: var(--teal-light); border-color: var(--teal); background: rgba(44,201,176,0.12); }
+        .history-toggle-btn i { font-size: 0.85rem; }
+
+        /* ===== MESSAGES AREA ===== */
+        .messages-area { flex: 1; overflow-y: auto; display: flex; flex-direction: column; }
+        .messages-inner { max-width: 760px; width: 100%; margin: 0 auto; padding: 1.5rem 1.2rem 1rem; display: flex; flex-direction: column; gap: 1.4rem; }
+
+        /* ===== EMPTY / LANDING STATE ===== */
+        .empty-state {
+            flex: 1; display: flex; flex-direction: column; align-items: center;
+            justify-content: flex-start; padding: 3rem 1.2rem 2rem; overflow-y: auto;
+        }
+        .landing-logo { margin-bottom: 1rem; }
+        .landing-logo svg { width: 48px; height: 48px; }
+        .landing-title { font-size: 1.6rem; font-weight: 800; margin-bottom: 0.4rem; background: linear-gradient(135deg, #fff 30%, #7de0d0); -webkit-background-clip: text; background-clip: text; color: transparent; text-align: center; }
+        .landing-sub { color: var(--muted); font-size: 0.88rem; margin-bottom: 2rem; text-align: center; }
+
+        /* Landing input box */
+        .landing-input-wrap { width: 100%; max-width: 680px; margin-bottom: 1rem; }
+        .landing-input-box {
+            display: flex; align-items: flex-end; gap: 0.6rem;
+            background: rgba(0,18,18,0.85); border: 1px solid var(--border-bright);
+            border-radius: 1.5rem; padding: 0.6rem 0.7rem 0.6rem 1rem;
+            box-shadow: 0 0 0 1px rgba(44,201,176,0.05), 0 8px 32px rgba(0,0,0,0.35);
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+        .landing-input-box:focus-within { border-color: rgba(44,201,176,0.65); box-shadow: 0 0 0 4px rgba(44,201,176,0.07), 0 8px 32px rgba(0,0,0,0.35); }
+        #queryInputLanding {
+            flex: 1; background: transparent; border: none; padding: 0.5rem 0;
+            font-family: 'Vazirmatn'; font-size: 1rem; color: #f0fcfc;
+            resize: none; outline: none; direction: rtl; max-height: 160px; overflow-y: auto;
+            line-height: 1.6;
+        }
+        #queryInputLanding::placeholder { color: var(--muted); }
+        .landing-actions { display: flex; align-items: center; gap: 0.35rem; flex-shrink: 0; }
+        .iaction-btn {
+            background: transparent; border: none; color: var(--muted); font-size: 1rem;
+            cursor: pointer; width: 36px; height: 36px; border-radius: 50%;
+            display: flex; align-items: center; justify-content: center; transition: all 0.18s;
+        }
+        .iaction-btn:hover { background: rgba(44,201,176,0.12); color: var(--teal); }
+        .send-btn {
+            background: var(--teal); border: none; color: #031010; font-size: 1rem;
+            cursor: pointer; width: 38px; height: 38px; border-radius: 50%;
+            display: flex; align-items: center; justify-content: center; transition: all 0.2s; flex-shrink: 0;
+        }
+        .send-btn:hover { background: var(--teal-light); box-shadow: 0 0 14px rgba(44,201,176,0.45); transform: scale(1.05); }
+        .send-btn:disabled { opacity: 0.35; cursor: not-allowed; transform: none; }
+
+        /* Output type chips (landing) */
+        .output-chips { display: flex; gap: 0.45rem; flex-wrap: wrap; direction: rtl; justify-content: center; margin-bottom: 2rem; width: 100%; max-width: 680px; }
+        .out-chip {
+            display: flex; align-items: center; gap: 0.32rem;
+            padding: 0.35rem 0.9rem; border-radius: 2rem; font-size: 0.78rem; font-weight: 600;
+            cursor: pointer; transition: all 0.18s; border: 1px solid var(--border);
+            background: rgba(44,201,176,0.04); color: var(--muted); font-family: inherit;
+            white-space: nowrap;
+        }
+        .out-chip:hover { border-color: rgba(44,201,176,0.45); color: var(--teal-light); background: rgba(44,201,176,0.09); }
+        .out-chip.active { background: rgba(44,201,176,0.16); border-color: var(--teal); color: var(--teal-light); }
+
+        /* Frequent questions */
+        .freq-section { width: 100%; max-width: 680px; }
+        .freq-label { font-size: 0.75rem; color: var(--muted); margin-bottom: 0.75rem; text-align: right; }
+        .freq-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.7rem; }
+        .freq-card {
+            background: var(--bg-card); border: 1px solid var(--border); border-radius: 1rem;
+            padding: 0.9rem 1rem; cursor: pointer; text-align: right;
+            transition: all 0.22s; display: flex; align-items: flex-start; gap: 0.65rem;
+        }
+        .freq-card:hover { border-color: var(--teal); background: rgba(44,201,176,0.07); transform: translateY(-2px); box-shadow: 0 4px 16px rgba(0,0,0,0.25); }
+        .freq-icon { color: var(--teal); font-size: 0.95rem; flex-shrink: 0; margin-top: 0.1rem; }
+        .freq-card-text { font-size: 0.82rem; color: #c8e8e4; line-height: 1.55; }
+        @media (max-width: 540px) { .freq-grid { grid-template-columns: 1fr; } }
+
+        /* ===== MESSAGE BUBBLES ===== */
+        .msg-row { display: flex; align-items: flex-start; gap: 0.75rem; direction: rtl; }
+        .msg-row.user-row { justify-content: flex-start; }
+        .msg-row.ai-row { justify-content: flex-end; }
+        @keyframes msgIn { from{opacity:0;transform:translateY(7px);} to{opacity:1;transform:translateY(0);} }
+        .msg-row { animation: msgIn 0.22s ease; }
+
+        .msg-avatar { width: 30px; height: 30px; border-radius: 50%; flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-size: 0.78rem; margin-top: 2px; }
+        .msg-avatar.ai-av { background: linear-gradient(135deg, var(--teal-darker), var(--teal-dark)); color: white; font-weight: 700; }
+        .msg-avatar.user-av { background: rgba(44,201,176,0.14); border: 1px solid var(--border); color: var(--teal); }
+
+        .msg-bubble { max-width: 78%; padding: 0.85rem 1.15rem; border-radius: 1.15rem; font-size: 0.91rem; line-height: 1.75; direction: rtl; word-break: break-word; }
+        .msg-bubble.ai { background: var(--bg-msg-ai); border: 1px solid var(--border); border-top-right-radius: 0.3rem; }
+        .msg-row.user-row .msg-bubble.user { border-top-right-radius: 0.3rem; border-top-left-radius: 1.15rem; }
+        .msg-bubble.user { background: var(--bg-msg-user); color: #e0faf5; border-top-right-radius: 0.3rem; }
+
+        .result-table-wrap { overflow-x: auto; margin-top: 0.8rem; border-radius: 0.75rem; border: 1px solid var(--border); }
+        .result-table { width: 100%; border-collapse: collapse; font-size: 0.82rem; }
+        .result-table th { background: rgba(44,201,176,0.1); color: var(--teal-light); padding: 0.55rem 0.85rem; font-weight: 600; text-align: center; white-space: nowrap; }
+        .result-table td { padding: 0.5rem 0.85rem; border-top: 1px solid var(--border); color: #c8e8e4; text-align: center; }
+        .result-table tr:hover td { background: rgba(44,201,176,0.04); }
+
+        .result-chart { margin-top: 0.8rem; background: rgba(4,20,20,0.8); border: 1px solid var(--border); border-radius: 0.75rem; padding: 1rem 1.1rem; }
+        .chart-bars { display: flex; align-items: flex-end; gap: 0.6rem; height: 100px; direction: ltr; }
+        .chart-col { display: flex; flex-direction: column; align-items: center; gap: 0.3rem; flex: 1; }
+        .chart-bar-fill { width: 100%; border-radius: 4px 4px 0 0; background: linear-gradient(to top, var(--teal-darker), var(--teal)); min-height: 4px; transition: height 0.6s ease; }
+        .chart-bar-label { font-size: 0.66rem; color: var(--muted); text-align: center; }
+        .chart-bar-val { font-size: 0.68rem; color: var(--teal); font-weight: 600; }
+
+        .result-report { margin-top: 0.5rem; }
+        .result-report h4 { color: var(--teal-light); font-size: 0.9rem; margin-bottom: 0.55rem; }
+        .result-report p { color: #c0dada; margin-bottom: 0.45rem; line-height: 1.8; font-size: 0.87rem; }
+        .result-report ul { padding-right: 1.2rem; color: #c0dada; }
+        .result-report ul li { margin-bottom: 0.3rem; font-size: 0.84rem; }
+
+        .result-sms { margin-top: 0.8rem; }
+        .sms-phone { background: rgba(0,0,0,0.4); border-radius: 1rem; padding: 1rem; border: 1px solid #333; max-width: 280px; }
+        .sms-header { font-size: 0.68rem; color: #888; text-align: center; margin-bottom: 0.55rem; }
+        .sms-bubble { background: #1a7a6a; color: white; border-radius: 1rem 1rem 0.2rem 1rem; padding: 0.6rem 0.9rem; font-size: 0.8rem; line-height: 1.55; }
+        .sms-time { font-size: 0.62rem; color: #888; text-align: left; margin-top: 0.3rem; }
+
+        .result-email { margin-top: 0.8rem; background: rgba(4,20,20,0.8); border: 1px solid var(--border); border-radius: 0.75rem; overflow: hidden; }
+        .email-header-bar { background: rgba(44,201,176,0.07); padding: 0.65rem 1rem; border-bottom: 1px solid var(--border); font-size: 0.78rem; color: var(--muted); }
+        .email-header-bar strong { color: #c8e8e4; }
+        .email-body-text { padding: 0.85rem 1rem; font-size: 0.84rem; color: #c0dada; line-height: 1.8; }
+
+        .result-presentation { margin-top: 0.8rem; }
+        .slide { background: linear-gradient(135deg, rgba(10,40,40,0.95), rgba(4,20,20,0.95)); border: 1px solid var(--border); border-radius: 0.75rem; padding: 1.5rem; aspect-ratio: 16/9; display: flex; flex-direction: column; justify-content: center; text-align: center; }
+        .slide-title { font-size: 1.05rem; font-weight: 800; color: var(--teal-light); margin-bottom: 0.75rem; }
+        .slide-bullets { list-style: none; font-size: 0.8rem; color: #c0dada; }
+        .slide-bullets li { margin-bottom: 0.4rem; }
+        .slide-bullets li::before { content: '▸ '; color: var(--teal); }
+
+        /* Typing indicator */
+        .typing-indicator { display: flex; align-items: center; gap: 4px; padding: 0.75rem 1.15rem; }
+        .typing-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--teal); animation: typingBounce 1.2s ease-in-out infinite; }
+        .typing-dot:nth-child(2) { animation-delay: 0.2s; }
+        .typing-dot:nth-child(3) { animation-delay: 0.4s; }
+        @keyframes typingBounce { 0%,60%,100%{transform:translateY(0);opacity:0.4;} 30%{transform:translateY(-6px);opacity:1;} }
+
+        /* ===== CHAT INPUT AREA (bottom, active chat) ===== */
+        .chat-input-area {
+            flex-shrink: 0; padding: 0.75rem 1.2rem 1.1rem;
+            background: rgba(3,11,11,0.96); backdrop-filter: blur(16px);
+            border-top: 1px solid var(--border);
+        }
+        .chat-input-inner { max-width: 760px; margin: 0 auto; }
+        .chat-output-chips { display: flex; gap: 0.4rem; margin-bottom: 0.6rem; flex-wrap: wrap; direction: rtl; }
+        .chat-input-row {
+            display: flex; align-items: flex-end; gap: 0.6rem;
+            background: rgba(0,18,18,0.8); border: 1px solid var(--border);
+            border-radius: 1.4rem; padding: 0.45rem 0.55rem 0.45rem 0.9rem;
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+        .chat-input-row:focus-within { border-color: rgba(44,201,176,0.55); box-shadow: 0 0 0 3px rgba(44,201,176,0.07); }
+        #queryInput {
+            flex: 1; background: transparent; border: none; padding: 0.45rem 0;
+            font-family: 'Vazirmatn'; font-size: 0.94rem; color: #f0fcfc;
+            resize: none; outline: none; direction: rtl; max-height: 130px; overflow-y: auto;
+            line-height: 1.6;
+        }
+        #queryInput::placeholder { color: var(--muted); }
+        .input-hint { text-align: center; font-size: 0.7rem; color: rgba(122,174,170,0.55); margin-top: 0.45rem; }
+
+        /* ===== RESPONSIVE ===== */
+        @media (max-width: 600px) {
+            .chat-topbar { padding: 0 0.8rem; }
+            .landing-title { font-size: 1.3rem; }
+            .freq-grid { grid-template-columns: 1fr; }
+            .msg-bubble { max-width: 92%; }
+            .topbar-logo-name { display: none; }
+            .connection-pill span:not(.connection-dot) { display: none; }
+        }
+
+        /* ===== DATA SETUP OVERLAY (upload + confirm relationships) ===== */
+        .setup-overlay {
+            position: fixed; inset: 0; z-index: 300;
+            background: rgba(2,8,8,0.92); backdrop-filter: blur(8px);
+            display: flex; align-items: center; justify-content: center; padding: 1.5rem;
+        }
+        .setup-overlay.hidden { display: none; }
+        .setup-box {
+            width: 100%; max-width: 560px; max-height: 88vh; overflow-y: auto;
+            background: linear-gradient(160deg, rgba(10,30,30,0.97), rgba(4,16,16,0.97));
+            border: 1px solid var(--border-bright); border-radius: 1.5rem;
+            padding: 2rem; box-shadow: 0 30px 80px rgba(0,0,0,0.6);
+        }
+        .setup-icon { font-size: 2.4rem; color: var(--teal); text-align: center; margin-bottom: 0.8rem; }
+        .setup-title { font-size: 1.4rem; font-weight: 800; text-align: center; margin-bottom: 0.5rem;
+            background: linear-gradient(135deg, #fff 30%, #7de0d0); -webkit-background-clip: text; background-clip: text; color: transparent; }
+        .setup-sub { color: var(--muted); font-size: 0.88rem; text-align: center; margin-bottom: 1.6rem; line-height: 1.7; }
+        .drop-zone {
+            border: 2px dashed var(--border-bright); border-radius: 1.1rem; padding: 2rem 1rem;
+            text-align: center; cursor: pointer; transition: all 0.2s; background: rgba(44,201,176,0.03);
+        }
+        .drop-zone:hover, .drop-zone.dragover { border-color: var(--teal); background: rgba(44,201,176,0.09); }
+        .drop-zone i { font-size: 2rem; color: var(--teal); margin-bottom: 0.6rem; }
+        .drop-zone p { color: #c8e8e4; font-size: 0.9rem; }
+        .drop-zone small { color: var(--muted); font-size: 0.75rem; }
+        .setup-btn {
+            width: 100%; margin-top: 1.2rem; padding: 0.85rem; border-radius: 0.9rem;
+            background: var(--teal); color: #031010; font-family: inherit; font-weight: 700; font-size: 0.95rem;
+            border: none; cursor: pointer; transition: all 0.2s;
+        }
+        .setup-btn:hover { background: var(--teal-light); box-shadow: 0 0 20px rgba(44,201,176,0.4); }
+        .setup-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+        .setup-secondary { text-align: center; margin-top: 1rem; }
+        .setup-secondary span { color: var(--muted); font-size: 0.8rem; cursor: pointer; border-bottom: 1px dashed var(--border); }
+        .setup-secondary span:hover { color: var(--teal-light); }
+        .setup-status { text-align: center; font-size: 0.82rem; margin-top: 0.9rem; min-height: 1.1rem; }
+        .setup-file { margin-top: 0.9rem; font-size: 0.82rem; color: var(--teal-light); text-align: center; }
+
+        /* Relationship confirm list */
+        .rel-tables { display: flex; flex-wrap: wrap; gap: 0.4rem; margin-bottom: 1.2rem; justify-content: center; }
+        .rel-table-chip { font-size: 0.74rem; background: rgba(44,201,176,0.1); border: 1px solid var(--border);
+            color: var(--teal-light); padding: 0.25rem 0.7rem; border-radius: 2rem; }
+        .rel-list { display: flex; flex-direction: column; gap: 0.6rem; margin-bottom: 0.5rem; }
+        .rel-item {
+            display: flex; align-items: center; gap: 0.7rem; padding: 0.75rem 0.9rem;
+            background: rgba(44,201,176,0.05); border: 1px solid var(--border); border-radius: 0.85rem;
+            cursor: pointer; transition: all 0.18s;
+        }
+        .rel-item:hover { border-color: var(--border-bright); background: rgba(44,201,176,0.09); }
+        .rel-item input { width: 17px; height: 17px; accent-color: var(--teal); cursor: pointer; flex-shrink: 0; }
+        .rel-text { flex: 1; font-size: 0.82rem; color: #c8e8e4; direction: ltr; text-align: left; }
+        .rel-text .arrow { color: var(--teal); margin: 0 0.3rem; }
+        .rel-reason { font-size: 0.72rem; color: var(--muted); margin-top: 0.15rem; direction: rtl; text-align: right; }
+        .rel-conf { font-size: 0.68rem; color: var(--teal); flex-shrink: 0; }
+        .rel-empty { text-align: center; color: var(--muted); font-size: 0.85rem; padding: 1rem; }
+
+        /* SQL disclosure in messages */
+        .sql-box { margin-top: 0.6rem; }
+        .sql-box summary { cursor: pointer; color: var(--muted); font-size: 0.75rem; }
+        .sql-box pre { white-space: pre-wrap; direction: ltr; text-align: left; background: rgba(0,0,0,0.35);
+            padding: 0.6rem 0.7rem; border-radius: 0.5rem; margin-top: 0.4rem; font-size: 0.74rem;
+            color: #9fe6d8; font-family: 'Courier New', monospace; overflow-x: auto; }
+    </style>
+</head>
+<body>
+
+<!-- ===== AUTH GUARD: must be logged in ===== -->
+<script>
+  if (!localStorage.getItem('mira_token')) { window.location.replace('index.html'); }
+</script>
+
+<!-- ===== DATA SETUP OVERLAY (upload Excel -> confirm relationships) ===== -->
+<div class="setup-overlay" id="setupOverlay">
+    <div class="setup-box" id="setupBox">
+        <!-- content injected by JS (upload phase / confirm phase) -->
+    </div>
+</div>
+
+<!-- Sidebar backdrop -->
+<div class="sidebar-backdrop" id="backdrop"></div>
+
+<!-- ===== SIDEBAR (history overlay) ===== -->
+<aside class="sidebar hidden" id="sidebar">
+    <div class="sidebar-top">
+        <div class="sidebar-header">
+            <span class="sidebar-title"><i class="fas fa-history" style="margin-left:0.4rem;font-size:0.85rem;"></i>تاریخچه گفت‌وگو</span>
+            <button class="sidebar-close" id="sidebarClose"><i class="fas fa-times"></i></button>
+        </div>
+        <button class="new-chat-btn" id="newChatBtn">
+            <i class="fas fa-plus"></i> گفت‌وگوی جدید
+        </button>
+    </div>
+    <div class="history-scroll" id="historyScroll">
+        <div class="empty-history" id="emptyHistory">هنوز گفت‌وگویی ندارید</div>
+    </div>
+    <div class="sidebar-bottom">
+        <a href="MiraMVP.html" class="back-link">
+            <i class="fas fa-arrow-right"></i> بازگشت به صفحه اصلی
+        </a>
+    </div>
+</aside>
+
+<!-- ===== MAIN ===== -->
+<div class="layout">
+    <main class="chat-main">
+        <!-- Top bar -->
+        <header class="chat-topbar">
+            <div class="topbar-left">
+                <a href="MiraMVP.html" class="topbar-logo">
+                    <svg class="topbar-logo-svg" viewBox="0 0 100 100" fill="none">
+                        <circle cx="50" cy="50" r="46" stroke="url(#tlg)" stroke-width="3" fill="none"/>
+                        <path d="M28 68 L40 35 L50 54 L60 35 L72 68" stroke="url(#tlg)" stroke-width="4.5" stroke-linejoin="round" stroke-linecap="round"/>
+                        <defs><linearGradient id="tlg" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#a3f7e6"/><stop offset="100%" stop-color="#2cc9b0"/></linearGradient></defs>
+                    </svg>
+                    <span class="topbar-logo-name">میرا</span>
+                </a>
+                <span class="chat-title-chip" id="chatTitleChip" style="display:none;"></span>
+            </div>
+            <div class="topbar-right">
+                <div class="connection-pill"><span class="connection-dot"></span><span>متصل</span></div>
+                <button class="history-toggle-btn" id="historyToggleBtn">
+                    <i class="fas fa-clock-rotate-left"></i>
+                    <span>تاریخچه</span>
+                </button>
+            </div>
+        </header>
+
+        <!-- Messages area (only during active chat) -->
+        <div class="messages-area" id="messagesArea" style="display:none;">
+            <div class="messages-inner" id="messagesInner"></div>
+        </div>
+
+        <!-- Empty / Landing state -->
+        <div class="empty-state" id="emptyState">
+            <div class="landing-logo">
+                <svg viewBox="0 0 100 100" fill="none">
+                    <circle cx="50" cy="50" r="46" stroke="url(#elg)" stroke-width="3" fill="none"/>
+                    <path d="M28 68 L40 35 L50 54 L60 35 L72 68" stroke="url(#elg)" stroke-width="4.5" stroke-linejoin="round" stroke-linecap="round"/>
+                    <defs><linearGradient id="elg" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#a3f7e6"/><stop offset="100%" stop-color="#2cc9b0"/></linearGradient></defs>
+                </svg>
+            </div>
+            <h2 class="landing-title">با داده‌هایت چه کار می‌خواهی بکنی؟</h2>
+            <p class="landing-sub">یک سوال بپرس یا از نمونه‌های زیر شروع کن</p>
+
+            <!-- Main input -->
+            <div class="landing-input-wrap">
+                <div class="landing-input-box">
+                    <textarea id="queryInputLanding" rows="1" placeholder="از داده‌هایت بپرس..."></textarea>
+                    <div class="landing-actions">
+                        <button class="iaction-btn" id="voiceBtnLanding" title="ورودی صوتی"><i class="fas fa-microphone"></i></button>
+                        <button class="send-btn" id="sendBtnLanding"><i class="fas fa-paper-plane"></i></button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Output type chips -->
+            <div class="output-chips" id="outputChipsLanding">
+                <button class="out-chip active" data-type="auto">✨ خودکار</button>
+                <button class="out-chip" data-type="table">📊 جدول</button>
+                <button class="out-chip" data-type="chart">📈 نمودار</button>
+                <button class="out-chip" data-type="report">📄 گزارش</button>
+                <button class="out-chip" data-type="sms">📱 پیامک</button>
+                <button class="out-chip" data-type="email">📧 ایمیل</button>
+                <button class="out-chip" data-type="presentation">📑 ارائه</button>
+            </div>
+
+            <!-- Frequent questions -->
+            <div class="freq-section">
+                <p class="freq-label">نمونه سوالات متداول</p>
+                <div class="freq-grid">
+                    <div class="freq-card" data-q="پرفروش‌ترین محصولات ماه گذشته کدامند؟">
+                        <div class="freq-icon"><i class="fas fa-trophy"></i></div>
+                        <div class="freq-card-text">پرفروش‌ترین محصولات ماه گذشته کدامند؟</div>
+                    </div>
+                    <div class="freq-card" data-q="روند درآمد ۶ ماه اخیر را نشان بده">
+                        <div class="freq-icon"><i class="fas fa-chart-line"></i></div>
+                        <div class="freq-card-text">روند درآمد ۶ ماه اخیر را نشان بده</div>
+                    </div>
+                    <div class="freq-card" data-q="مشتریانی که ۳ ماه خرید نکرده‌اند را لیست کن">
+                        <div class="freq-icon"><i class="fas fa-user-clock"></i></div>
+                        <div class="freq-card-text">مشتریانی که ۳ ماه خرید نکرده‌اند را لیست کن</div>
+                    </div>
+                    <div class="freq-card" data-q="میانگین ارزش سبد خرید هر مشتری چقدر است؟">
+                        <div class="freq-icon"><i class="fas fa-shopping-cart"></i></div>
+                        <div class="freq-card-text">میانگین ارزش سبد خرید هر مشتری چقدر است؟</div>
+                    </div>
+                    <div class="freq-card" data-q="کدام کانال فروش بیشترین نرخ تبدیل را دارد؟">
+                        <div class="freq-icon"><i class="fas fa-filter"></i></div>
+                        <div class="freq-card-text">کدام کانال فروش بیشترین نرخ تبدیل را دارد؟</div>
+                    </div>
+                    <div class="freq-card" data-q="گزارش هفتگی فروش به تفکیک منطقه جغرافیایی">
+                        <div class="freq-icon"><i class="fas fa-map-marked-alt"></i></div>
+                        <div class="freq-card-text">گزارش هفتگی فروش به تفکیک منطقه جغرافیایی</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Chat input (visible during active chat) -->
+        <div class="chat-input-area" id="chatInputArea" style="display:none;">
+            <div class="chat-input-inner">
+                <div class="chat-output-chips" id="outputChipsChat">
+                    <button class="out-chip active" data-type="auto">✨ خودکار</button>
+                    <button class="out-chip" data-type="table">📊 جدول</button>
+                    <button class="out-chip" data-type="chart">📈 نمودار</button>
+                    <button class="out-chip" data-type="report">📄 گزارش</button>
+                    <button class="out-chip" data-type="sms">📱 پیامک</button>
+                    <button class="out-chip" data-type="email">📧 ایمیل</button>
+                    <button class="out-chip" data-type="presentation">📑 ارائه</button>
+                </div>
+                <div class="chat-input-row">
+                    <textarea id="queryInput" rows="1" placeholder="از داده‌هایت بپرس..."></textarea>
+                    <div class="landing-actions">
+                        <button class="iaction-btn" id="voiceBtn" title="ورودی صوتی"><i class="fas fa-microphone"></i></button>
+                        <button class="send-btn" id="sendBtn"><i class="fas fa-paper-plane"></i></button>
+                    </div>
+                </div>
+                <div class="input-hint">Ctrl+Enter برای ارسال</div>
+            </div>
+        </div>
+    </main>
+</div>
+
+<script>
+// ===== State =====
+let chats = JSON.parse(localStorage.getItem('mira_chats') || '[]');
+let currentId = null;
+let selectedOutputType = 'auto';
+let inChat = false;
+
+// ===== Sidebar =====
+const sidebar = document.getElementById('sidebar');
+const backdrop = document.getElementById('backdrop');
+const historyToggleBtn = document.getElementById('historyToggleBtn');
+const sidebarClose = document.getElementById('sidebarClose');
+
+function openSidebar() {
+    sidebar.classList.remove('hidden');
+    backdrop.classList.add('visible');
+    document.body.style.overflow = 'hidden';
+}
+function closeSidebar() {
+    sidebar.classList.add('hidden');
+    backdrop.classList.remove('visible');
+    document.body.style.overflow = '';
+}
+historyToggleBtn.onclick = () => sidebar.classList.contains('hidden') ? openSidebar() : closeSidebar();
+sidebarClose.onclick = closeSidebar;
+backdrop.onclick = closeSidebar;
+
+// ===== Output type chips sync =====
+function syncChips(activeType) {
+    document.querySelectorAll('.out-chip').forEach(c => {
+        c.classList.toggle('active', c.dataset.type === activeType);
+    });
+    selectedOutputType = activeType;
+}
+
+document.getElementById('outputChipsLanding').addEventListener('click', e => {
+    const chip = e.target.closest('.out-chip');
+    if (chip) syncChips(chip.dataset.type);
+});
+document.getElementById('outputChipsChat').addEventListener('click', e => {
+    const chip = e.target.closest('.out-chip');
+    if (chip) syncChips(chip.dataset.type);
+});
+
+// ===== Auto-resize textareas =====
+function autoResize(el) {
+    el.style.height = 'auto';
+    el.style.height = Math.min(el.scrollHeight, 150) + 'px';
+}
+document.getElementById('queryInputLanding').addEventListener('input', function() { autoResize(this); });
+document.getElementById('queryInput').addEventListener('input', function() { autoResize(this); });
+
+// ===== Chat History =====
+function saveChats() { localStorage.setItem('mira_chats', JSON.stringify(chats)); }
+
+function renderHistory() {
+    const scroll = document.getElementById('historyScroll');
+    const emptyEl = document.getElementById('emptyHistory');
+    scroll.querySelectorAll('.history-group-label, .history-item').forEach(e => e.remove());
+    if (chats.length === 0) { emptyEl.style.display = 'block'; return; }
+    emptyEl.style.display = 'none';
+
+    const now = Date.now();
+    const oneDay = 86400000;
+    const groups = { today: [], yesterday: [], earlier: [] };
+    chats.forEach(c => {
+        const age = now - c.ts;
+        if (age < oneDay) groups.today.push(c);
+        else if (age < 2 * oneDay) groups.yesterday.push(c);
+        else groups.earlier.push(c);
+    });
+
+    const renderGroup = (label, items) => {
+        if (items.length === 0) return;
+        const lbl = document.createElement('div');
+        lbl.className = 'history-group-label';
+        lbl.textContent = label;
+        scroll.appendChild(lbl);
+        items.forEach(c => {
+            const el = document.createElement('div');
+            el.className = 'history-item' + (c.id === currentId ? ' active' : '');
+            el.innerHTML = `<span class="history-title">${escHtml(c.title)}</span><button class="history-delete" data-id="${c.id}" title="حذف"><i class="fas fa-trash-alt"></i></button>`;
+            el.addEventListener('click', ev => { if (!ev.target.closest('.history-delete')) { switchChat(c.id); closeSidebar(); } });
+            el.querySelector('.history-delete').addEventListener('click', ev => { ev.stopPropagation(); deleteChat(c.id); });
+            scroll.appendChild(el);
+        });
+    };
+    renderGroup('امروز', groups.today);
+    renderGroup('دیروز', groups.yesterday);
+    renderGroup('قبل‌تر', groups.earlier);
+}
+
+function switchChat(id) {
+    currentId = id;
+    const chat = chats.find(c => c.id === id);
+    if (!chat) return;
+    renderHistory();
+    renderMessages(chat.messages);
+    if (chat.messages.length > 0) showChatMode(chat.title);
+}
+
+function deleteChat(id) {
+    chats = chats.filter(c => c.id !== id);
+    saveChats();
+    if (currentId === id) {
+        if (chats.length > 0) switchChat(chats[0].id);
+        else { currentId = null; showLandingMode(); }
+    }
+    renderHistory();
+}
+
+function createNewChat() {
+    const id = Date.now().toString();
+    const chat = { id, title: 'گفت‌وگوی جدید', ts: Date.now(), messages: [] };
+    chats.unshift(chat);
+    currentId = id;
+    saveChats();
+    renderHistory();
+    showLandingMode();
+    closeSidebar();
+    focusActiveInput();
+}
+
+document.getElementById('newChatBtn').onclick = createNewChat;
+
+// ===== View mode =====
+function showLandingMode() {
+    inChat = false;
+    document.getElementById('emptyState').style.display = 'flex';
+    document.getElementById('messagesArea').style.display = 'none';
+    document.getElementById('chatInputArea').style.display = 'none';
+    document.getElementById('chatTitleChip').style.display = 'none';
+    document.getElementById('messagesInner').innerHTML = '';
+    focusActiveInput();
+}
+
+function showChatMode(title) {
+    inChat = true;
+    document.getElementById('emptyState').style.display = 'none';
+    document.getElementById('messagesArea').style.display = 'flex';
+    document.getElementById('chatInputArea').style.display = 'block';
+    const chip = document.getElementById('chatTitleChip');
+    chip.textContent = title || 'گفت‌وگو';
+    chip.style.display = '';
+}
+
+function focusActiveInput() {
+    const el = inChat ? document.getElementById('queryInput') : document.getElementById('queryInputLanding');
+    setTimeout(() => el && el.focus(), 80);
+}
+
+// ===== Message Rendering =====
+function renderMessages(messages) {
+    const inner = document.getElementById('messagesInner');
+    inner.innerHTML = '';
+    messages.forEach(m => inner.appendChild(createMsgEl(m.role, m.html || m.text)));
+    scrollToBottom();
+}
+
+function createMsgEl(role, htmlContent) {
+    const row = document.createElement('div');
+    row.className = `msg-row ${role === 'user' ? 'user-row' : 'ai-row'}`;
+    if (role === 'user') {
+        row.innerHTML = `<div class="msg-avatar user-av"><i class="fas fa-user"></i></div><div class="msg-bubble user">${htmlContent}</div>`;
+    } else {
+        row.innerHTML = `<div class="msg-bubble ai">${htmlContent}</div><div class="msg-avatar ai-av">م</div>`;
+    }
+    return row;
+}
+
+function addMessage(role, htmlContent, text) {
+    const inner = document.getElementById('messagesInner');
+    inner.appendChild(createMsgEl(role, htmlContent));
+
+    const chat = chats.find(c => c.id === currentId);
+    if (chat) {
+        if (chat.messages.length === 0 && role === 'user') {
+            const title = (text || htmlContent).substring(0, 38) + ((text || htmlContent).length > 38 ? '…' : '');
+            chat.title = title;
+            showChatMode(title);
+        }
+        chat.messages.push({ role, html: htmlContent, text: text || htmlContent, ts: Date.now() });
+        chat.ts = Date.now();
+        chats = [chats.find(c => c.id === currentId), ...chats.filter(c => c.id !== currentId)];
+        saveChats();
+        renderHistory();
+    }
+    scrollToBottom();
+}
+
+function showTyping() {
+    const el = document.createElement('div');
+    el.className = 'msg-row ai-row'; el.id = 'typingRow';
+    el.innerHTML = `<div class="msg-bubble ai"><div class="typing-indicator"><div class="typing-dot"></div><div class="typing-dot"></div><div class="typing-dot"></div></div></div><div class="msg-avatar ai-av">م</div>`;
+    document.getElementById('messagesInner').appendChild(el);
+    scrollToBottom();
+}
+function removeTyping() { const el = document.getElementById('typingRow'); if (el) el.remove(); }
+function scrollToBottom() { const a = document.getElementById('messagesArea'); setTimeout(() => { if (a) a.scrollTop = a.scrollHeight; }, 60); }
+
+// ===== Mock Response =====
+function detectType(query) {
+    if (/جدول|لیست|نام|کد/.test(query)) return 'table';
+    if (/نمودار|مقایسه|روند|رشد/.test(query)) return 'chart';
+    if (/پیامک|SMS/.test(query)) return 'sms';
+    if (/ایمیل/.test(query)) return 'email';
+    if (/ارائه|اسلاید|پاورپوینت/.test(query)) return 'presentation';
+    return 'report';
+}
+
+function generateResponse(outputType, query) {
+    const type = outputType === 'auto' ? detectType(query) : outputType;
+    const intro = `<p style="margin-bottom:0.65rem;color:#a3f7e6;font-size:0.85rem;">✦ پاسخ بر اساس داده‌های متصل شما</p>`;
+
+    if (type === 'table') return intro + `<div class="result-table-wrap"><table class="result-table"><thead><tr><th>محصول</th><th>فروش (واحد)</th><th>درآمد (M تومان)</th><th>تغییر</th></tr></thead><tbody><tr><td>موبایل سامسونگ A54</td><td>۱٬۲۴۰</td><td>۵۶.۸</td><td style="color:#4dd9b0">▲ ۱۸٪</td></tr><tr><td>لپ‌تاپ اچ‌پی Pavilion</td><td>۸۴۲</td><td>۱۲۴.۳</td><td style="color:#4dd9b0">▲ ۱۲٪</td></tr><tr><td>هدفون سونی WH-1000</td><td>۶۱۸</td><td>۲۹.۴</td><td style="color:#4dd9b0">▲ ۷٪</td></tr><tr><td>تبلت اپل iPad Air</td><td>۳۹۵</td><td>۸۷.۲</td><td style="color:#ff8a7a">▼ ۳٪</td></tr><tr><td>دوربین کانن EOS R50</td><td>۲۱۸</td><td>۴۸.۶</td><td style="color:#4dd9b0">▲ ۲۲٪</td></tr></tbody></table></div><p style="margin-top:0.55rem;font-size:0.76rem;color:var(--muted);">۵ محصول پرفروش — داده ماه گذشته</p>`;
+
+    if (type === 'chart') return intro + `<div class="result-chart"><p style="font-size:0.8rem;color:var(--muted);margin-bottom:0.7rem;">درآمد ماهانه (میلیون تومان)</p><div class="chart-bars"><div class="chart-col"><div class="chart-bar-val">۲۴۱</div><div class="chart-bar-fill" style="height:62%"></div><div class="chart-bar-label">فروردین</div></div><div class="chart-col"><div class="chart-bar-val">۲۸۶</div><div class="chart-bar-fill" style="height:73%"></div><div class="chart-bar-label">اردیبهشت</div></div><div class="chart-col"><div class="chart-bar-val">۳۱۸</div><div class="chart-bar-fill" style="height:82%"></div><div class="chart-bar-label">خرداد</div></div><div class="chart-col"><div class="chart-bar-val">۳۴۲</div><div class="chart-bar-fill" style="height:88%"></div><div class="chart-bar-label">تیر</div></div><div class="chart-col"><div class="chart-bar-val">۳۸۸</div><div class="chart-bar-fill" style="height:100%"></div><div class="chart-bar-label">مرداد</div></div><div class="chart-col"><div class="chart-bar-val">۳۶۱</div><div class="chart-bar-fill" style="height:93%"></div><div class="chart-bar-label">شهریور</div></div></div></div><p style="margin-top:0.55rem;font-size:0.78rem;color:var(--muted);">روند صعودی ۶ ماهه — رشد کلی ۵۰٪</p>`;
+
+    if (type === 'sms') return intro + `<div class="result-sms"><div class="sms-phone"><div class="sms-header">پیامک هوشمند — آماده ارسال</div><div class="sms-bubble">سلام [نام مشتری]! فروش امروز شما ۱۸٪ بالاتر از میانگین هفتگی است. برترین محصول: Samsung A54 با ۸۴ فروش. — میرا</div><div class="sms-time">۲ دقیقه پیش</div></div><p style="margin-top:0.55rem;font-size:0.76rem;color:var(--muted);">۱۵۸ کاراکتر · آماده ارسال به ۱۲ مدیر</p></div>`;
+
+    if (type === 'email') return intro + `<div class="result-email"><div class="email-header-bar"><strong>موضوع:</strong> گزارش فروش هفتگی — هفته سوم مرداد</div><div class="email-header-bar"><strong>گیرنده:</strong> team@company.ir · مدیران فروش</div><div class="email-body-text">با سلام،<br><br>خلاصه عملکرد فروش هفته گذشته:<br>• کل درآمد: <strong style="color:var(--teal)">۳۶۱ میلیون تومان</strong> (+۱۲٪)<br>• تعداد سفارش: ۲٬۸۴۶<br>• میانگین سبد خرید: ۱۲۷ هزار تومان<br>• بهترین کانال: اپلیکیشن موبایل (۴۸٪)<br><br>با احترام،<br>میرا — دستیار هوشمند داده</div></div>`;
+
+    if (type === 'presentation') return intro + `<div class="result-presentation"><div class="slide"><div class="slide-title">خلاصه عملکرد فروش — مرداد ۱۴۰۴</div><ul class="slide-bullets"><li>درآمد کل: ۳۶۱ میلیون تومان — رشد ۱۲٪</li><li>پرفروش‌ترین دسته: الکترونیک (۵۲٪ سهم)</li><li>بهترین منطقه: تهران و البرز</li><li>نرخ بازگشت مشتری: ۶۸٪</li><li>پیش‌بینی شهریور: ۴۱۰ میلیون تومان</li></ul></div><p style="margin-top:0.45rem;font-size:0.76rem;color:var(--muted);">اسلاید ۱ از ۶ · قابل صادرسازی به PowerPoint</p></div>`;
+
+    return intro + `<div class="result-report"><h4>📄 گزارش تحلیلی میرا</h4><p><strong>خلاصه:</strong> عملکرد کلی در ماه گذشته مثبت بوده است. میانگین فروش روزانه ۱۲.۰۳ میلیون تومان، رشد نسبت به ماه قبل ۱۵.۴٪.</p><p><strong>نکات کلیدی:</strong></p><ul><li>منطقه شمال‌غرب با ۲۱٪ رشد برترین منطقه بود</li><li>دسته الکترونیک ۵۲٪ از کل درآمد را تشکیل داد</li><li>نرخ ریزش مشتری ۳٪ کاهش یافته است</li><li>محصولات ۵۰۰-۸۰۰ هزار تومانی بیشترین تبدیل را داشتند</li></ul><p><strong>پیشنهاد:</strong> افزایش بودجه تبلیغات دیجیتال در استان‌های مرکزی و گسترش موجودی الکترونیک.</p></div>`;
+}
+
+// ===== Send Message =====
+async function handleSend(fromLanding) {
+    const inputEl = fromLanding ? document.getElementById('queryInputLanding') : document.getElementById('queryInput');
+    const text = inputEl.value.trim();
+    if (!text) return;
+
+    if (!currentId) createNewChatSilent();
+
+    const sendBtnId = fromLanding ? 'sendBtnLanding' : 'sendBtn';
+    const sendBtn = document.getElementById(sendBtnId);
+    sendBtn.disabled = true;
+    inputEl.value = '';
+    inputEl.style.height = 'auto';
+
+    if (!inChat) {
+        document.getElementById('emptyState').style.display = 'none';
+        document.getElementById('messagesArea').style.display = 'flex';
+        document.getElementById('chatInputArea').style.display = 'block';
+        inChat = true;
+    }
+
+    addMessage('user', escHtml(text), text);
+    showTyping();
+
+    const aiHtml = await window.miraAsk(text, selectedOutputType);
+    removeTyping();
+    addMessage('ai', aiHtml, 'پاسخ میرا');
+
+    sendBtn.disabled = false;
+    document.getElementById('queryInput').focus();
+}
+
+function createNewChatSilent() {
+    const id = Date.now().toString();
+    chats.unshift({ id, title: 'گفت‌وگوی جدید', ts: Date.now(), messages: [] });
+    currentId = id;
+    saveChats();
+    renderHistory();
+}
+
+document.getElementById('sendBtnLanding').onclick = () => handleSend(true);
+document.getElementById('sendBtn').onclick = () => handleSend(false);
+
+document.getElementById('queryInputLanding').addEventListener('keydown', e => {
+    if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') { e.preventDefault(); handleSend(true); }
+});
+document.getElementById('queryInput').addEventListener('keydown', e => {
+    if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') { e.preventDefault(); handleSend(false); }
+});
+
+// Frequent question cards
+document.querySelectorAll('.freq-card').forEach(card => {
+    card.addEventListener('click', () => {
+        const inp = document.getElementById('queryInputLanding');
+        inp.value = card.dataset.q;
+        autoResize(inp);
+        handleSend(true);
+    });
+});
+
+// ===== Voice =====
+function setupVoice(btnId, inputId) {
+    const btn = document.getElementById(btnId);
+    if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+        const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+        const rec = new SR(); rec.lang = 'fa-IR';
+        btn.onclick = () => { rec.start(); btn.querySelector('i').className = 'fas fa-circle'; btn.style.color = '#ff8a7a'; };
+        rec.onresult = e => { const inp = document.getElementById(inputId); inp.value = e.results[0][0].transcript; autoResize(inp); };
+        rec.onend = () => { btn.querySelector('i').className = 'fas fa-microphone'; btn.style.color = ''; };
+        rec.onerror = () => { btn.querySelector('i').className = 'fas fa-microphone'; btn.style.color = ''; };
+    } else { btn.style.opacity = '0.3'; btn.disabled = true; }
+}
+setupVoice('voiceBtnLanding', 'queryInputLanding');
+setupVoice('voiceBtn', 'queryInput');
+
+// ===== Helpers =====
+function escHtml(s) { return s.replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
+function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+// ===== Init =====
+(function init() {
+    // Drop any chats with corrupted messages (missing both html and text)
+    chats = chats.filter(c => Array.isArray(c.messages) &&
+        c.messages.every(m => m && (m.html || m.text)));
+    saveChats();
+
+    renderHistory();
+    createNewChatSilent();
+    showLandingMode();
+})();
+
+// ============================================================================
+//  MIRA BACKEND INTEGRATION  (chat calls + data-setup overlay)
+// ============================================================================
+function authHeaders() { return { 'Authorization': 'Bearer ' + localStorage.getItem('mira_token') }; }
+function logoutToLogin() { localStorage.removeItem('mira_token'); window.location.replace('index.html'); }
+function errBubble(m) { return `<p style="color:#ff8a7a">${escHtml(m)}</p>`; }
+
+// ---- Chat: send a question to the backend and render the answer ----
+window.miraAsk = async function (prompt, outputType) {
+    try {
+        const res = await fetch('/api/chat/process', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', ...authHeaders() },
+            body: JSON.stringify({ user_prompt: prompt, output_type: outputType })
+        });
+        if (res.status === 401) { logoutToLogin(); return errBubble('نشست منقضی شده است.'); }
+        if (!res.ok) {
+            // Read the body as text first, then try JSON — so we surface the
+            // real error even when the server returns a plain-text 500.
+            let detail;
+            const raw = await res.text();
+            try { detail = JSON.parse(raw).detail; } catch { detail = raw; }
+            let msg;
+            if (typeof detail === 'string' && detail.trim()) msg = detail;
+            else if (detail && detail.message) msg = detail.message;
+            else if (detail) msg = JSON.stringify(detail);
+            else msg = 'خطای ناشناخته';
+            return errBubble('خطا (' + res.status + '): ' + msg);
+        }
+        return renderResult(await res.json());
+    } catch (err) {
+        return errBubble('ارتباط با سرور برقرار نشد.');
+    }
+};
+
+function renderResult(data) {
+    let out = `<p style="margin-bottom:0.65rem;color:#a3f7e6;font-size:0.85rem;">✦ پاسخ بر اساس داده‌های شما</p>`;
+    if (data.analysis_text) out += `<div class="result-report"><p>${escHtml(data.analysis_text)}</p></div>`;
+
+    // Real chart (drawn by Chart.js). When a chart is shown, do NOT show the table.
+    const hasChart = data.chart && data.chart.labels && data.chart.labels.length;
+    if (hasChart) {
+        const id = 'chart_' + Math.random().toString(36).slice(2);
+        out += `<div style="position:relative;height:340px;margin-top:0.8rem;background:rgba(0,0,0,0.22);border:1px solid var(--border);border-radius:0.9rem;padding:0.9rem;"><canvas id="${id}"></canvas></div>`;
+        scheduleChart(id, data.chart);
+    } else if (data.rendered_output && data.rendered_output.indexOf('<table') !== -1) {
+        out += `<div class="result-table-wrap">${data.rendered_output}</div>`;
+    } else if (data.raw_data && data.raw_data.length && data.columns) {
+        out += `<div class="result-table-wrap">${buildResultTable(data.columns, data.raw_data)}</div>`;
+    } else if (!data.analysis_text) {
+        out += `<p style="color:var(--muted);font-size:0.85rem">نتیجه‌ای یافت نشد.</p>`;
+    }
+    if (data.sql_query_generated) {
+        out += `<details class="sql-box"><summary>کوئری تولیدشده (SQL)</summary><pre>${escHtml(data.sql_query_generated)}</pre></details>`;
+    }
+    return out;
+}
+
+// Draw the chart after the canvas has been inserted into the DOM.
+function scheduleChart(canvasId, spec) {
+    const palette = ['#2cc9b0', '#7de0d0', '#1a9e8a', '#46e0c8', '#0f6f63', '#5bd1bd', '#23867a'];
+    setTimeout(function () {
+        const el = document.getElementById(canvasId);
+        if (!el || typeof Chart === 'undefined') return;
+        const isLine = spec.type === 'line';
+        const datasets = spec.datasets.map(function (ds, i) {
+            const c = palette[i % palette.length];
+            return {
+                label: ds.label,
+                data: ds.data,
+                borderColor: c,
+                backgroundColor: isLine ? 'rgba(44,201,176,0.15)'
+                    : spec.datasets.length > 1 ? c
+                    : spec.labels.map((_, k) => palette[k % palette.length]),
+                borderWidth: 2,
+                fill: isLine,
+                tension: 0.35,
+                pointRadius: isLine ? 2 : 0,
+                borderRadius: isLine ? 0 : 6,
+            };
+        });
+        new Chart(el.getContext('2d'), {
+            type: spec.type,
+            data: { labels: spec.labels, datasets: datasets },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { labels: { color: '#c8e8e4', font: { family: 'Vazirmatn' } } },
+                    tooltip: { titleFont: { family: 'Vazirmatn' }, bodyFont: { family: 'Vazirmatn' } },
+                },
+                scales: {
+                    x: { ticks: { color: '#8fb3ad', font: { family: 'Vazirmatn' } }, grid: { color: 'rgba(255,255,255,0.05)' } },
+                    y: { ticks: { color: '#8fb3ad', font: { family: 'Vazirmatn' } }, grid: { color: 'rgba(255,255,255,0.05)' }, beginAtZero: true },
+                },
+            },
+        });
+    }, 60);
+}
+
+function buildResultTable(cols, rows) {
+    const head = cols.map(c => `<th>${escHtml(String(c))}</th>`).join('');
+    const body = rows.map(r => `<tr>${cols.map(c => `<td>${escHtml(String(r[c] ?? ''))}</td>`).join('')}</tr>`).join('');
+    return `<table class="result-table"><thead><tr>${head}</tr></thead><tbody>${body}</tbody></table>`;
+}
+
+// ---- Data setup overlay: phase 1 upload, phase 2 confirm relationships ----
+const setupOverlay = document.getElementById('setupOverlay');
+const setupBox = document.getElementById('setupBox');
+let pickedFile = null;
+
+function showUploadPhase() {
+    pickedFile = null;
+    setupBox.innerHTML = `
+        <div class="setup-icon"><i class="fas fa-file-excel"></i></div>
+        <div class="setup-title">داده‌های خود را بارگذاری کنید</div>
+        <div class="setup-sub">یک فایل اکسل (xlsx) آپلود کنید. هر شیت یک جدول داده در نظر گرفته می‌شود و میرا روابط بین جدول‌ها را با هوش مصنوعی پیدا می‌کند.</div>
+        <div class="drop-zone" id="dropZone">
+            <i class="fas fa-cloud-arrow-up"></i>
+            <p>فایل را اینجا بکشید یا کلیک کنید</p>
+            <small>فرمت‌های پشتیبانی‌شده: .xlsx، .xls</small>
+        </div>
+        <input type="file" id="excelInput" accept=".xlsx,.xls" style="display:none">
+        <div class="setup-file" id="fileName"></div>
+        <button class="setup-btn" id="uploadBtn" disabled>بارگذاری و تحلیل روابط</button>
+        <div class="setup-secondary"><span id="useSample">بدون فایل، با داده نمونه ادامه بده</span></div>
+        <div class="setup-status" id="setupStatus"></div>`;
+    const dz = document.getElementById('dropZone');
+    const input = document.getElementById('excelInput');
+    const btn = document.getElementById('uploadBtn');
+    const pick = f => { pickedFile = f; document.getElementById('fileName').textContent = '📎 ' + f.name; btn.disabled = false; };
+    dz.onclick = () => input.click();
+    dz.ondragover = e => { e.preventDefault(); dz.classList.add('dragover'); };
+    dz.ondragleave = () => dz.classList.remove('dragover');
+    dz.ondrop = e => { e.preventDefault(); dz.classList.remove('dragover'); if (e.dataTransfer.files[0]) pick(e.dataTransfer.files[0]); };
+    input.onchange = () => { if (input.files[0]) pick(input.files[0]); };
+    btn.onclick = doUpload;
+    document.getElementById('useSample').onclick = doUseSample;
+}
+
+async function doUpload() {
+    if (!pickedFile) return;
+    const btn = document.getElementById('uploadBtn');
+    const status = document.getElementById('setupStatus');
+    btn.disabled = true; status.style.color = 'var(--muted)';
+    status.textContent = 'در حال بارگذاری و تحلیل روابط با هوش مصنوعی...';
+    const fd = new FormData(); fd.append('file', pickedFile);
+    try {
+        const res = await fetch('/api/db/upload', { method: 'POST', headers: authHeaders(), body: fd });
+        if (res.status === 401) return logoutToLogin();
+        if (!res.ok) { const e = await res.json().catch(() => ({})); status.style.color = '#ff8a7a'; status.textContent = e.detail || 'بارگذاری ناموفق بود'; btn.disabled = false; return; }
+        showConfirmPhase(await res.json());
+    } catch (err) { status.style.color = '#ff8a7a'; status.textContent = 'ارتباط با سرور برقرار نشد.'; btn.disabled = false; }
+}
+
+async function doUseSample() {
+    const status = document.getElementById('setupStatus');
+    status.style.color = 'var(--muted)'; status.textContent = 'در حال بارگذاری داده نمونه...';
+    try {
+        const res = await fetch('/api/db/schema', { headers: authHeaders() });
+        if (res.status === 401) return logoutToLogin();
+        showConfirmPhase(await res.json());
+    } catch (err) { status.style.color = '#ff8a7a'; status.textContent = 'ارتباط با سرور برقرار نشد.'; }
+}
+
+function showConfirmPhase(schema) {
+    const tables = schema.tables || [];
+    const rels = schema.relationships || [];
+    const chips = tables.map(t => `<span class="rel-table-chip">${escHtml(t.name)} (${t.row_count})</span>`).join('');
+    let relsHtml;
+    if (rels.length === 0) {
+        relsHtml = `<div class="rel-empty">رابطه‌ای بین جدول‌ها تشخیص داده نشد. می‌توانید بدون رابطه ادامه دهید.</div>`;
+    } else {
+        relsHtml = `<div class="rel-list">` + rels.map((r, i) => `
+            <label class="rel-item">
+                <input type="checkbox" data-i="${i}" checked>
+                <div style="flex:1">
+                    <div class="rel-text">${escHtml(r.from_table)}.${escHtml(r.from_column)}<span class="arrow">→</span>${escHtml(r.to_table)}.${escHtml(r.to_column)}</div>
+                    <div class="rel-reason">${escHtml(r.reason || '')}</div>
+                </div>
+                <span class="rel-conf">${Math.round((r.confidence || 0) * 100)}٪</span>
+            </label>`).join('') + `</div>`;
+    }
+    setupBox.innerHTML = `
+        <div class="setup-icon"><i class="fas fa-diagram-project"></i></div>
+        <div class="setup-title">روابط تشخیص داده‌شده</div>
+        <div class="setup-sub">میرا این جدول‌ها و روابط را پیدا کرد. موارد درست را تأیید کنید تا در پاسخ‌گویی استفاده شوند.</div>
+        <div class="rel-tables">${chips}</div>
+        ${relsHtml}
+        <button class="setup-btn" id="confirmBtn">تأیید و شروع گفت‌وگو</button>
+        <div class="setup-secondary"><span id="reupload">آپلود فایل دیگر</span></div>
+        <div class="setup-status" id="setupStatus2"></div>`;
+    document.getElementById('confirmBtn').onclick = () => doConfirm(rels);
+    document.getElementById('reupload').onclick = showUploadPhase;
+}
+
+async function doConfirm(rels) {
+    const btn = document.getElementById('confirmBtn');
+    const status = document.getElementById('setupStatus2');
+    const checked = [];
+    setupBox.querySelectorAll('.rel-item input:checked').forEach(cb => {
+        const i = parseInt(cb.dataset.i, 10); if (rels[i]) checked.push(rels[i]);
+    });
+    btn.disabled = true; status.style.color = 'var(--muted)'; status.textContent = 'در حال ذخیره...';
+    try {
+        const res = await fetch('/api/db/confirm', {
+            method: 'POST', headers: { 'Content-Type': 'application/json', ...authHeaders() },
+            body: JSON.stringify({ relationships: checked })
+        });
+        if (res.status === 401) return logoutToLogin();
+        if (!res.ok) { status.style.color = '#ff8a7a'; status.textContent = 'ذخیره ناموفق بود'; btn.disabled = false; return; }
+        setupOverlay.classList.add('hidden');
+        focusActiveInput();
+    } catch (err) { status.style.color = '#ff8a7a'; status.textContent = 'ارتباط با سرور برقرار نشد.'; btn.disabled = false; }
+}
+
+// Start the setup flow.
+showUploadPhase();
+</script>
+</body>
+</html>
