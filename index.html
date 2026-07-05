@@ -1,0 +1,657 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="میرا: دستیار هوش مصنوعی داده‌های سازمانی. پرسش به زبان طبیعی، تحلیل آنی و خروجی‌های حرفه‌ای">
+    <title>میرا | هوش مصنوعی تحلیلگر داده سازمانی</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+        :root {
+            --teal: #2cc9b0;
+            --teal-light: #a3f7e6;
+            --teal-dark: #198f7c;
+            --teal-darker: #0f6052;
+            --bg: #030b0b;
+            --bg-card: rgba(8, 28, 28, 0.75);
+            --border: rgba(44, 201, 176, 0.22);
+            --text: #eef5f5;
+            --muted: #7aaeaa;
+        }
+        html { scroll-behavior: smooth; }
+        body { font-family: 'Vazirmatn', sans-serif; background: var(--bg); color: var(--text); line-height: 1.6; overflow-x: hidden; }
+        ::-webkit-scrollbar { width: 5px; }
+        ::-webkit-scrollbar-track { background: #0a1a1a; }
+        ::-webkit-scrollbar-thumb { background: var(--teal); border-radius: 10px; }
+
+        /* BG Orbs */
+        .orb { position: fixed; border-radius: 50%; pointer-events: none; z-index: 0; filter: blur(120px); opacity: 0.09; }
+        .orb-1 { width: 800px; height: 800px; background: var(--teal); top: -300px; right: -200px; animation: orbdrift 18s ease-in-out infinite alternate; }
+        .orb-2 { width: 600px; height: 600px; background: var(--teal-darker); bottom: 0; left: -200px; animation: orbdrift 24s ease-in-out infinite alternate-reverse; }
+        @keyframes orbdrift { from { transform: translate(0,0) scale(1); } to { transform: translate(40px,-40px) scale(1.08); } }
+
+        /* Layout */
+        .container { max-width: 1100px; margin: 0 auto; padding: 0 2rem; position: relative; z-index: 1; }
+        section { padding: 7rem 0; }
+        .section-alt { background: rgba(5, 18, 18, 0.55); }
+        .divider { height: 1px; background: linear-gradient(90deg, transparent, var(--border), transparent); }
+
+        /* Navbar */
+        .navbar {
+            position: fixed; top: 0; left: 0; right: 0; z-index: 200;
+            height: 70px; display: flex; align-items: center; padding: 0 3rem;
+            background: rgba(3,11,11,0.85); backdrop-filter: blur(20px) saturate(180%);
+            border-bottom: 1px solid var(--border); transition: background 0.3s;
+        }
+        .nav-inner { max-width: 1100px; width: 100%; margin: 0 auto; display: flex; align-items: center; justify-content: space-between; }
+        .logo-wrap { display: flex; align-items: center; gap: 0.7rem; text-decoration: none; }
+        .logo-svg { width: 36px; height: 36px; }
+        .logo-name { font-size: 1.65rem; font-weight: 800; background: linear-gradient(135deg, var(--teal-light), var(--teal)); -webkit-background-clip: text; background-clip: text; color: transparent; }
+        .nav-links { display: flex; gap: 2.2rem; }
+        .nav-links a { color: var(--muted); text-decoration: none; font-size: 0.88rem; transition: color 0.2s; }
+        .nav-links a:hover { color: var(--teal); }
+        .nav-actions { display: flex; gap: 0.8rem; align-items: center; }
+        .btn { padding: 0.5rem 1.3rem; border-radius: 2rem; font-weight: 600; cursor: pointer; transition: all 0.2s; border: none; font-family: inherit; font-size: 0.88rem; }
+        .btn-ghost { background: transparent; border: 1px solid var(--border); color: #caf7f0; }
+        .btn-ghost:hover { border-color: var(--teal); background: rgba(44,201,176,0.1); }
+        .btn-teal { background: var(--teal); color: #031010; font-weight: 700; }
+        .btn-teal:hover { background: var(--teal-light); box-shadow: 0 0 22px rgba(44,201,176,0.45); }
+        @media (max-width: 768px) { .navbar { padding: 0 1.2rem; } .nav-links { display: none; } }
+
+        /* Hero */
+        .hero {
+            min-height: 100vh; display: flex; align-items: center; justify-content: center;
+            text-align: center; padding: 68px 2rem 4rem; position: relative; overflow: hidden;
+        }
+        .hero::before {
+            content: ''; position: absolute; inset: 0; pointer-events: none;
+            background-image: linear-gradient(rgba(44,201,176,0.035) 1px, transparent 1px), linear-gradient(90deg, rgba(44,201,176,0.035) 1px, transparent 1px);
+            background-size: 55px 55px;
+            mask-image: radial-gradient(ellipse 75% 75% at 50% 50%, black, transparent);
+        }
+        .hero-inner { max-width: 860px; position: relative; }
+        .hero-badge { display: inline-flex; align-items: center; gap: 0.6rem; background: rgba(44,201,176,0.08); border: 1px solid var(--border); padding: 0.38rem 1.2rem; border-radius: 2rem; font-size: 0.8rem; color: var(--teal); margin-bottom: 2.2rem; }
+        .hero-badge .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--teal); animation: blink 2s ease-in-out infinite; }
+        @keyframes blink { 0%,100%{opacity:1;} 50%{opacity:0.2;} }
+        .hero h1 { font-size: clamp(2.6rem, 6vw, 4.4rem); font-weight: 800; line-height: 1.18; background: linear-gradient(135deg, #fff 25%, #7de0d0 70%, var(--teal) 100%); -webkit-background-clip: text; background-clip: text; color: transparent; margin-bottom: 1.5rem; letter-spacing: -0.02em; }
+        .hero-sub { font-size: 1.1rem; color: #aed4d0; margin-bottom: 2.8rem; max-width: 560px; margin-left: auto; margin-right: auto; line-height: 1.85; }
+        .hero-ctas { display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap; margin-bottom: 3rem; }
+        .cta-primary { padding: 0.9rem 2.4rem; border-radius: 3rem; font-weight: 700; font-size: 1rem; background: var(--teal); color: #031010; border: none; cursor: pointer; font-family: inherit; transition: all 0.22s; box-shadow: 0 4px 22px rgba(44,201,176,0.28); }
+        .cta-primary:hover { background: var(--teal-light); box-shadow: 0 8px 36px rgba(44,201,176,0.55); transform: translateY(-3px); }
+        .cta-ghost { padding: 0.9rem 2.4rem; border-radius: 3rem; font-weight: 600; font-size: 1rem; background: transparent; color: #caf7f0; border: 1.5px solid var(--border); cursor: pointer; font-family: inherit; transition: all 0.22s; }
+        .cta-ghost:hover { border-color: rgba(44,201,176,0.55); background: rgba(44,201,176,0.08); transform: translateY(-3px); }
+        .hero-quote { display: inline-block; background: rgba(44,201,176,0.07); border: 1px solid var(--border); padding: 0.5rem 1.6rem; border-radius: 2rem; font-size: 0.88rem; color: #a3f7e6; transition: opacity 0.4s ease; }
+
+        /* Section headings */
+        .sec-eyebrow { font-size: 0.78rem; color: var(--teal); letter-spacing: 0.14em; text-transform: uppercase; margin-bottom: 0.8rem; }
+        .sec-heading { font-size: clamp(1.8rem, 3.5vw, 2.6rem); font-weight: 800; background: linear-gradient(135deg, #fff 40%, #7de0d0); -webkit-background-clip: text; background-clip: text; color: transparent; margin-bottom: 1rem; line-height: 1.2; }
+        .sec-sub { color: var(--muted); font-size: 0.95rem; max-width: 460px; line-height: 1.75; }
+
+        /* How it works */
+        .steps-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 1.6rem; margin-top: 3.5rem; }
+        .step-card { background: var(--bg-card); backdrop-filter: blur(12px); border: 1px solid var(--border); border-radius: 1.6rem; padding: 2.2rem; position: relative; overflow: hidden; transition: all 0.3s; }
+        .step-card:hover { border-color: rgba(44,201,176,0.5); transform: translateY(-7px); box-shadow: 0 24px 54px rgba(0,0,0,0.45); }
+        .step-card::after { content: ''; position: absolute; inset: 0; border-radius: inherit; background: linear-gradient(135deg, rgba(44,201,176,0.07), transparent); opacity: 0; transition: opacity 0.3s; }
+        .step-card:hover::after { opacity: 1; }
+        .step-num { position: absolute; top: 1rem; left: 1.6rem; font-size: 4.5rem; font-weight: 900; color: rgba(44,201,176,0.07); line-height: 1; }
+        .step-icon { font-size: 1.7rem; color: var(--teal); margin-bottom: 1.2rem; }
+        .step-card h3 { font-size: 1.05rem; font-weight: 700; margin-bottom: 0.5rem; }
+        .step-card p { font-size: 0.85rem; color: #9abbbb; line-height: 1.75; }
+
+        /* Features */
+        .cards-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 1.4rem; margin-top: 3.5rem; }
+        .feature-card { background: var(--bg-card); backdrop-filter: blur(12px); border: 1px solid var(--border); border-radius: 1.5rem; padding: 1.7rem; transition: all 0.25s; }
+        .feature-card:hover { border-color: rgba(44,201,176,0.5); transform: translateY(-5px); box-shadow: 0 18px 44px rgba(0,0,0,0.38); }
+        .feat-icon { width: 46px; height: 46px; border-radius: 0.85rem; background: rgba(44,201,176,0.1); border: 1px solid rgba(44,201,176,0.2); display: flex; align-items: center; justify-content: center; font-size: 1.3rem; color: var(--teal); margin-bottom: 1.1rem; }
+        .feature-card h3 { font-size: 0.95rem; font-weight: 700; margin-bottom: 0.45rem; }
+        .feature-card p { font-size: 0.82rem; color: #9abbbb; line-height: 1.7; }
+
+        /* Stats */
+        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 1.4rem; margin-top: 3rem; }
+        .stat-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 1.5rem; padding: 2.2rem; text-align: center; transition: border-color 0.25s; }
+        .stat-card:hover { border-color: rgba(44,201,176,0.5); }
+        .stat-num { font-size: 3rem; font-weight: 900; color: var(--teal); line-height: 1; display: block; }
+        .stat-lbl { font-size: 0.82rem; color: var(--muted); margin-top: 0.6rem; line-height: 1.5; }
+
+        /* Testimonials */
+        .t-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1.4rem; margin-top: 3.5rem; }
+        .t-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 1.5rem; padding: 1.6rem; transition: all 0.25s; }
+        .t-card:hover { border-color: rgba(44,201,176,0.5); transform: translateY(-4px); }
+        .t-stars { color: var(--teal); font-size: 0.82rem; margin-bottom: 0.9rem; letter-spacing: 2px; }
+        .t-text { font-size: 0.88rem; color: #cce0de; line-height: 1.85; margin-bottom: 1.2rem; font-style: italic; }
+        .t-divider { height: 1px; background: var(--border); margin-bottom: 1rem; }
+        .t-name { font-weight: 700; color: var(--teal-light); font-size: 0.87rem; }
+        .t-role { font-size: 0.75rem; color: var(--muted); margin-top: 0.2rem; }
+
+        /* Demo CTA */
+        .demo-box {
+            background: linear-gradient(135deg, rgba(12,48,48,0.95), rgba(4,20,20,0.95));
+            border: 1px solid rgba(44,201,176,0.35); border-radius: 2.5rem;
+            padding: 5rem 3rem; text-align: center; position: relative; overflow: hidden;
+            box-shadow: 0 40px 80px rgba(0,0,0,0.5), inset 0 1px 0 rgba(44,201,176,0.12);
+        }
+        .demo-box::before { content: ''; position: absolute; inset: 0; background: radial-gradient(ellipse at 50% 0%, rgba(44,201,176,0.09), transparent 65%); pointer-events: none; }
+        .demo-box h2 { font-size: clamp(1.9rem, 4vw, 3rem); font-weight: 800; margin-bottom: 1rem; background: linear-gradient(135deg, #fff, #7de0d0); -webkit-background-clip: text; background-clip: text; color: transparent; position: relative; }
+        .demo-box > p { color: var(--muted); font-size: 1rem; margin-bottom: 3rem; position: relative; }
+        .demo-form { display: flex; gap: 0.8rem; max-width: 500px; margin: 0 auto 1.2rem; position: relative; }
+        .demo-input { flex: 1; background: rgba(0,22,22,0.88); border: 1px solid var(--border); border-radius: 2rem; padding: 0.88rem 1.4rem; color: white; font-family: 'Vazirmatn'; font-size: 0.92rem; outline: none; transition: all 0.2s; direction: ltr; text-align: right; }
+        .demo-input:focus { border-color: var(--teal); box-shadow: 0 0 0 3px rgba(44,201,176,0.12); }
+        .demo-submit { padding: 0.88rem 2.2rem; border-radius: 2rem; background: var(--teal); color: #031010; font-weight: 700; border: none; cursor: pointer; font-family: inherit; font-size: 0.92rem; transition: all 0.2s; white-space: nowrap; }
+        .demo-submit:hover { background: var(--teal-light); box-shadow: 0 0 26px rgba(44,201,176,0.5); }
+        .demo-note { font-size: 0.78rem; color: var(--muted); }
+        .demo-note i { color: var(--teal); margin-left: 0.3rem; }
+        @media (max-width: 580px) { .demo-form { flex-direction: column; } .demo-box { padding: 3rem 1.5rem; } }
+
+        /* Integrations */
+        .badge-row { display: flex; flex-wrap: wrap; gap: 0.85rem; justify-content: center; margin-top: 2.5rem; }
+        .int-badge { background: rgba(6,32,32,0.9); padding: 0.55rem 1.3rem; border-radius: 2rem; font-size: 0.82rem; border: 1px solid var(--border); display: inline-flex; align-items: center; gap: 0.5rem; color: #caf0ec; transition: all 0.2s; }
+        .int-badge:hover { border-color: var(--teal); background: rgba(44,201,176,0.08); transform: translateY(-2px); }
+
+        /* FAQ */
+        .faq-inner { max-width: 680px; margin: 3.5rem auto 0; }
+        .faq-item { border: 1px solid var(--border); border-radius: 1.1rem; margin-bottom: 0.85rem; overflow: hidden; transition: border-color 0.25s; }
+        .faq-item.open { border-color: rgba(44,201,176,0.5); }
+        .faq-q { display: flex; justify-content: space-between; align-items: center; padding: 1.15rem 1.5rem; font-weight: 600; font-size: 0.92rem; cursor: pointer; color: #cce5e0; user-select: none; background: transparent; border: none; width: 100%; text-align: right; font-family: inherit; transition: color 0.2s; }
+        .faq-q:hover { color: var(--teal-light); }
+        .faq-q i { transition: transform 0.35s; color: var(--teal); flex-shrink: 0; margin-right: 1rem; }
+        .faq-item.open .faq-q i { transform: rotate(180deg); }
+        .faq-a { max-height: 0; overflow: hidden; transition: max-height 0.38s ease, padding 0.38s ease; color: var(--muted); font-size: 0.88rem; line-height: 1.8; padding: 0 1.5rem; }
+        .faq-item.open .faq-a { max-height: 240px; padding: 0 1.5rem 1.3rem; }
+
+        /* Contact */
+        .contact-inner { max-width: 540px; margin: 3.5rem auto 0; }
+        .form-field { margin-bottom: 0.9rem; }
+        .form-field input, .form-field textarea { width: 100%; background: rgba(0,20,20,0.7); border: 1px solid var(--border); border-radius: 1rem; padding: 0.9rem 1.3rem; color: white; font-family: 'Vazirmatn'; font-size: 0.9rem; outline: none; transition: all 0.2s; }
+        .form-field input:focus, .form-field textarea:focus { border-color: var(--teal); box-shadow: 0 0 0 3px rgba(44,201,176,0.1); }
+        .form-field textarea { resize: vertical; }
+        .contact-btn { width: 100%; padding: 0.95rem; border-radius: 2rem; background: var(--teal); color: #031010; font-weight: 700; border: none; cursor: pointer; font-family: inherit; font-size: 1rem; transition: all 0.2s; }
+        .contact-btn:hover { background: var(--teal-light); box-shadow: 0 0 22px rgba(44,201,176,0.4); }
+        .contact-status { margin-top: 0.6rem; text-align: center; font-size: 0.82rem; }
+
+        /* Footer */
+        footer { padding: 3rem 2rem; text-align: center; border-top: 1px solid var(--border); color: var(--muted); font-size: 0.82rem; }
+        .footer-links { display: flex; gap: 1.8rem; justify-content: center; margin-bottom: 1.2rem; flex-wrap: wrap; }
+        .footer-links a { color: var(--muted); text-decoration: none; transition: color 0.2s; }
+        .footer-links a:hover { color: var(--teal); }
+
+        /* Modal */
+        .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.88); backdrop-filter: blur(14px); z-index: 999; justify-content: center; align-items: center; }
+        .modal-overlay.show { display: flex; }
+        .modal-box { background: rgba(10,34,34,0.98); border: 1px solid rgba(44,201,176,0.45); border-radius: 2rem; padding: 2.8rem; width: 90%; max-width: 440px; position: relative; animation: modalIn 0.28s cubic-bezier(0.34,1.56,0.64,1); }
+        @keyframes modalIn { from{opacity:0;transform:scale(0.88) translateY(24px);} to{opacity:1;transform:scale(1) translateY(0);} }
+        .modal-close { position: absolute; top: 1.2rem; left: 1.5rem; background: none; border: none; font-size: 1.5rem; cursor: pointer; color: var(--muted); transition: color 0.2s; line-height: 1; }
+        .modal-close:hover { color: var(--teal); }
+        .modal-title { font-size: 1.5rem; font-weight: 800; margin-bottom: 0.4rem; }
+        .modal-sub { font-size: 0.84rem; color: var(--muted); margin-bottom: 2rem; }
+        .modal-input { width: 100%; margin-bottom: 0.85rem; padding: 0.88rem 1.2rem; border-radius: 1rem; background: rgba(0,25,25,0.95); border: 1px solid var(--border); color: white; font-family: 'Vazirmatn'; font-size: 0.9rem; outline: none; transition: all 0.2s; }
+        .modal-input:focus { border-color: var(--teal); box-shadow: 0 0 0 3px rgba(44,201,176,0.1); }
+        .modal-btn { width: 100%; padding: 0.92rem; border-radius: 2rem; background: var(--teal); color: #031010; font-weight: 700; border: none; cursor: pointer; font-family: inherit; font-size: 0.95rem; transition: all 0.2s; margin-top: 0.4rem; }
+        .modal-btn:hover { background: var(--teal-light); }
+        .modal-switch { text-align: center; margin-top: 1.2rem; font-size: 0.82rem; color: var(--muted); }
+        .modal-switch span { color: var(--teal); cursor: pointer; }
+        .modal-switch span:hover { text-decoration: underline; }
+    </style>
+</head>
+<body>
+
+<div class="orb orb-1"></div>
+<div class="orb orb-2"></div>
+
+<!-- Navbar -->
+<header class="navbar">
+    <div class="nav-inner">
+        <a href="#" class="logo-wrap">
+            <svg class="logo-svg" viewBox="0 0 100 100" fill="none">
+                <circle cx="50" cy="50" r="46" stroke="url(#lg1)" stroke-width="3" fill="none"/>
+                <path d="M28 68 L40 35 L50 54 L60 35 L72 68" stroke="url(#lg1)" stroke-width="4.5" stroke-linejoin="round" stroke-linecap="round"/>
+                <defs><linearGradient id="lg1" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#a3f7e6"/><stop offset="100%" stop-color="#2cc9b0"/></linearGradient></defs>
+            </svg>
+            <span class="logo-name">میرا</span>
+        </a>
+        <nav class="nav-links">
+            <a href="#how">نحوه کار</a>
+            <a href="#features">قابلیت‌ها</a>
+            <a href="#faq">سوالات</a>
+            <a href="#contact">تماس</a>
+        </nav>
+        <div class="nav-actions">
+            <button class="btn btn-ghost" id="loginBtn">ورود</button>
+            <button class="btn btn-teal" id="signupBtn">ثبت‌نام</button>
+        </div>
+    </div>
+</header>
+
+<!-- Hero -->
+<section class="hero">
+    <div class="hero-inner">
+        <div class="hero-badge">
+            <span class="dot"></span>
+            هوش مصنوعی متصل به داده‌های سازمانی شما
+        </div>
+        <h1>داده‌هایت را<br>زنده کن</h1>
+        <p class="hero-sub">میرا به زبان طبیعی با دیتابیس، CRM و دیتالیک شما صحبت می‌کند.<br>تحلیل، تمیزکاری و گزارش — در چند ثانیه.</p>
+        <div class="hero-ctas">
+            <button class="cta-primary" id="heroDemoBtn">درخواست دمو</button>
+            <button class="cta-ghost" onclick="document.getElementById('how').scrollIntoView({behavior:'smooth'})">نحوه کار میرا ↓</button>
+        </div>
+        <div class="hero-quote" id="dynamicQuote"></div>
+    </div>
+</section>
+
+<div class="divider"></div>
+
+<!-- How it Works -->
+<section class="section-alt" id="how">
+    <div class="container">
+        <div class="sec-eyebrow">نحوه کار</div>
+        <div class="sec-heading">سه قدم تا تحلیل کامل</div>
+        <p class="sec-sub">بدون SQL، بدون کدنویسی. فقط بپرسید.</p>
+        <div class="steps-grid">
+            <div class="step-card">
+                <div class="step-num">۱</div>
+                <div class="step-icon"><i class="fas fa-plug"></i></div>
+                <h3>اتصال به داده‌هایت</h3>
+                <p>دیتابیس، CRM، دیتالیک یا فایل Excel را در چند ثانیه وصل کنید. میرا شِمای داده را خودکار کشف می‌کند.</p>
+            </div>
+            <div class="step-card">
+                <div class="step-num">۲</div>
+                <div class="step-icon"><i class="fas fa-comments"></i></div>
+                <h3>سوال به زبان طبیعی</h3>
+                <p>همانطور که با یک همکار صحبت می‌کنید از داده‌هایتان بپرسید. میرا مفهوم را درک می‌کند.</p>
+            </div>
+            <div class="step-card">
+                <div class="step-num">۳</div>
+                <div class="step-icon"><i class="fas fa-chart-bar"></i></div>
+                <h3>خروجی حرفه‌ای</h3>
+                <p>جدول، نمودار، گزارش، پیامک یا ارائه — نوع خروجی را انتخاب کنید و میرا تحویل می‌دهد.</p>
+            </div>
+        </div>
+    </div>
+</section>
+
+<div class="divider"></div>
+
+<!-- Features -->
+<section id="features">
+    <div class="container">
+        <div class="sec-eyebrow">قابلیت‌ها</div>
+        <div class="sec-heading">همه چیز در یک دستیار</div>
+        <div class="cards-grid">
+            <div class="feature-card">
+                <div class="feat-icon"><i class="fas fa-microphone-alt"></i></div>
+                <h3>پرسش صوتی</h3>
+                <p>سوال خود را بگویید، میرا با دقت بالا تشخیص داده و پاسخ می‌دهد.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feat-icon"><i class="fas fa-chart-pie"></i></div>
+                <h3>خروجی شخصی‌سازی شده</h3>
+                <p>جدول، نمودار، گزارش، پیامک، ایمیل یا ارائه — همه در یک کلیک.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feat-icon"><i class="fas fa-comment-dots"></i></div>
+                <h3>درک زبان طبیعی</h3>
+                <p>سوالات پیچیده کسب‌وکار را درک می‌کند و پاسخ دقیق می‌دهد.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feat-icon"><i class="fas fa-link"></i></div>
+                <h3>اتصال به داده‌استک</h3>
+                <p>دیتابیس، CRM، Data Lake — همه پشتیبانی می‌شوند.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feat-icon"><i class="fas fa-robot"></i></div>
+                <h3>عامل‌های خودکار</h3>
+                <p>پایش تغییرات و هشدار هوشمند بدون دخالت انسان.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feat-icon"><i class="fas fa-brain"></i></div>
+                <h3>لایه معنایی سازمانی</h3>
+                <p>متریک‌های اختصاصی کسب‌وکار شما را یاد می‌گیرد و به خاطر می‌سپارد.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feat-icon"><i class="fas fa-shield-alt"></i></div>
+                <h3>امنیت سازمانی</h3>
+                <p>رمزنگاری کامل، گواهی SOC2 و کنترل دسترسی دقیق در سطح ردیف.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feat-icon"><i class="fas fa-code"></i></div>
+                <h3>API برای جاسازی</h3>
+                <p>قدرت میرا را با APIهای RESTful در محصول خود جاسازی کنید.</p>
+            </div>
+        </div>
+    </div>
+</section>
+
+<div class="divider"></div>
+
+<!-- Stats -->
+<section class="section-alt">
+    <div class="container">
+        <div class="sec-eyebrow" style="text-align:center">آمار عملکرد</div>
+        <div class="sec-heading" style="text-align:center">اعداد حرف می‌زنند</div>
+        <div class="stats-grid" id="statsGrid">
+            <div class="stat-card"><span class="stat-num" id="s1">۰</span><div class="stat-lbl">میلیون درخواست پردازش شده</div></div>
+            <div class="stat-card"><span class="stat-num" id="s2">۰</span><div class="stat-lbl">ثانیه میانگین زمان پاسخ</div></div>
+            <div class="stat-card"><span class="stat-num" id="s3">۰</span><div class="stat-lbl">٪ دقت پاسخ‌دهی</div></div>
+            <div class="stat-card"><span class="stat-num" id="s4">۰</span><div class="stat-lbl">ساعت صرفه‌جویی در ماه</div></div>
+        </div>
+    </div>
+</section>
+
+<div class="divider"></div>
+
+<!-- Testimonials -->
+<section id="testimonials">
+    <div class="container">
+        <div class="sec-eyebrow">نظر مشتریان</div>
+        <div class="sec-heading">آن‌ها میرا را انتخاب کردند</div>
+        <div class="t-grid">
+            <div class="t-card">
+                <div class="t-stars">★★★★★</div>
+                <div class="t-text">«میرا زمان تحلیل ما را از چند روز به چند دقیقه کاهش داد. تیم بازاریابی دیگر به دیتا ساینتیست نیاز ندارد.»</div>
+                <div class="t-divider"></div>
+                <div class="t-name">مدیر فروش</div>
+                <div class="t-role">دیجی‌کالا</div>
+            </div>
+            <div class="t-card">
+                <div class="t-stars">★★★★★</div>
+                <div class="t-text">«اتصال به دیتابیس‌های ابری بسیار ساده بود و خروجی گرافیکی عالی است. شخصی‌سازی گزارش‌ها بسیار مفید است.»</div>
+                <div class="t-divider"></div>
+                <div class="t-name">تیم تحلیل</div>
+                <div class="t-role">اسنپ</div>
+            </div>
+            <div class="t-card">
+                <div class="t-stars">★★★★★</div>
+                <div class="t-text">«سوالات پیچیده مالی را به سادگی جواب می‌دهد. تاریخچه هوشمند به ما کمک کرده روند تصمیم‌گیری را ردیابی کنیم.»</div>
+                <div class="t-divider"></div>
+                <div class="t-name">مدیر مالی</div>
+                <div class="t-role">همراه اول</div>
+            </div>
+            <div class="t-card">
+                <div class="t-stars">★★★★★</div>
+                <div class="t-text">«API میرا را در داشبورد داخلی خود جاسازی کردیم. مشتریان ما عاشق این قابلیت شده‌اند.»</div>
+                <div class="t-divider"></div>
+                <div class="t-name">تیم محصول</div>
+                <div class="t-role">علی‌بابا</div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<div class="divider"></div>
+
+<!-- Demo CTA -->
+<section id="demo">
+    <div class="container">
+        <div class="demo-box">
+            <h2>آماده‌اید داده‌هایتان را زنده کنید؟</h2>
+            <p>با بیش از ۵۰۰ سازمان پیشرو همراه شوید. ۱۴ روز رایگان، بدون نیاز به کارت اعتباری.</p>
+            <div class="demo-form">
+                <input class="demo-input" type="email" id="demoEmailInput" placeholder="ایمیل سازمانی شما">
+                <button class="demo-submit" id="demoFormBtn">درخواست دمو</button>
+            </div>
+            <div class="demo-note"><i class="fas fa-lock"></i> اطلاعات شما امن است و با کسی به اشتراک گذاشته نمی‌شود</div>
+        </div>
+    </div>
+</section>
+
+<div class="divider"></div>
+
+<!-- Integrations -->
+<section class="section-alt">
+    <div class="container" style="text-align:center">
+        <div class="sec-eyebrow">یکپارچگی‌ها</div>
+        <div class="sec-heading">متصل به ابزارهای شما</div>
+        <div class="badge-row">
+            <span class="int-badge"><i class="fab fa-salesforce"></i> Salesforce</span>
+            <span class="int-badge"><i class="fas fa-cloud"></i> Databricks</span>
+            <span class="int-badge"><i class="fas fa-database"></i> PostgreSQL</span>
+            <span class="int-badge"><i class="fas fa-database"></i> MySQL</span>
+            <span class="int-badge"><i class="fas fa-chart-line"></i> PowerBI</span>
+            <span class="int-badge"><i class="fab fa-github"></i> GitHub</span>
+            <span class="int-badge"><i class="fas fa-file-excel"></i> Excel</span>
+            <span class="int-badge"><i class="fab fa-google"></i> BigQuery</span>
+            <span class="int-badge"><i class="fas fa-snowflake"></i> Snowflake</span>
+        </div>
+    </div>
+</section>
+
+<div class="divider"></div>
+
+<!-- FAQ -->
+<section id="faq">
+    <div class="container">
+        <div class="sec-eyebrow" style="text-align:center">سوالات متداول</div>
+        <div class="sec-heading" style="text-align:center">پاسخ سوال‌های شما</div>
+        <div class="faq-inner">
+            <div class="faq-item">
+                <button class="faq-q">آیا میرا از مدل‌های مختلف هوش مصنوعی استفاده می‌کند؟ <i class="fas fa-chevron-down"></i></button>
+                <div class="faq-a">بله، میرا از پیشرفته‌ترین مدل‌های زبانی برای درک و پاسخ‌دهی استفاده می‌کند، اما شما فقط یک پاسخ ساده و مفید دریافت می‌کنید.</div>
+            </div>
+            <div class="faq-item">
+                <button class="faq-q">آیا داده‌های سازمانی من امن است؟ <i class="fas fa-chevron-down"></i></button>
+                <div class="faq-a">بله، تمام ارتباطات با TLS رمزنگاری شده و داده‌ها در سرورهای امن با گواهی SOC2 نگهداری می‌شوند. داده‌های شما برای آموزش مدل استفاده نمی‌شود.</div>
+            </div>
+            <div class="faq-item">
+                <button class="faq-q">چگونه می‌توانم میرا را به دیتابیس خود متصل کنم؟ <i class="fas fa-chevron-down"></i></button>
+                <div class="faq-a">از طریق پنل مدیریت، اطلاعات اتصال را وارد کنید. میرا به صورت خودکار شِمای داده را کشف می‌کند و در کمتر از ۵ دقیقه آماده است.</div>
+            </div>
+            <div class="faq-item">
+                <button class="faq-q">آیا می‌توانم خروجی‌ها را در داشبورد خودم جاسازی کنم؟ <i class="fas fa-chevron-down"></i></button>
+                <div class="faq-a">بله، میرا APIهای RESTful ارائه می‌دهد که می‌توانید جدول‌ها، نمودارها و گزارش‌ها را در محصول خود نمایش دهید.</div>
+            </div>
+            <div class="faq-item">
+                <button class="faq-q">آیا دوره آزمایشی رایگان وجود دارد؟ <i class="fas fa-chevron-down"></i></button>
+                <div class="faq-a">بله، ۱۴ روز کامل دسترسی رایگان بدون نیاز به کارت اعتباری. پس از پایان دوره اگر راضی نبودید هیچ هزینه‌ای اعمال نمی‌شود.</div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<div class="divider"></div>
+
+<!-- Contact -->
+<section id="contact" class="section-alt">
+    <div class="container" style="text-align:center">
+        <div class="sec-eyebrow">ارتباط با ما</div>
+        <div class="sec-heading">پیامی بگذارید</div>
+        <div class="contact-inner">
+            <div class="form-field"><input type="text" id="cName" placeholder="نام و نام خانوادگی"></div>
+            <div class="form-field"><input type="email" id="cEmail" placeholder="ایمیل" dir="ltr"></div>
+            <div class="form-field"><textarea id="cMsg" rows="4" placeholder="پیام شما..."></textarea></div>
+            <button class="contact-btn" id="sendMsgBtn">ارسال پیام</button>
+            <div id="contactStatus" class="contact-status"></div>
+        </div>
+    </div>
+</section>
+
+<!-- Footer -->
+<footer>
+    <div class="footer-links">
+        <a href="#how">نحوه کار</a>
+        <a href="#features">قابلیت‌ها</a>
+        <a href="#faq">سوالات</a>
+        <a href="#contact">تماس</a>
+    </div>
+    <p>© ۱۴۰۴ میرا — جایی که داده‌ها قصه می‌گویند</p>
+    <p style="margin-top:0.4rem; font-size:0.76rem;">ساخته شده با ❤ برای سازمان‌های ایرانی</p>
+</footer>
+
+<!-- Auth Modal -->
+<div class="modal-overlay" id="authModal">
+    <div class="modal-box">
+        <button class="modal-close" id="closeAuth">&times;</button>
+        <div class="modal-title" id="authTitle">ورود به میرا</div>
+        <div class="modal-sub" id="authSub">خوش آمدید، با ایمیل خود وارد شوید</div>
+        <input class="modal-input" type="text" id="authName" placeholder="نام و نام خانوادگی" style="display:none">
+        <input class="modal-input" type="email" id="authEmail" placeholder="ایمیل" dir="ltr">
+        <input class="modal-input" type="password" id="authPass" placeholder="رمز عبور" dir="ltr">
+        <button class="modal-btn" id="authDo">ورود</button>
+        <div class="modal-switch" id="authSwitch">حساب ندارید؟ <span id="authSwitchLink">ثبت‌نام کنید</span></div>
+    </div>
+</div>
+
+<!-- Demo Request Modal -->
+<div class="modal-overlay" id="demoModal">
+    <div class="modal-box">
+        <button class="modal-close" id="closeDemoModal">&times;</button>
+        <div class="modal-title">درخواست دمو</div>
+        <div class="modal-sub">برای شروع، مشخصات خود را ثبت کنید. بعد از ثبت‌نام وارد مرحله آپلود فایل اکسل می‌شوید.</div>
+        <input class="modal-input" type="text" id="demoName" placeholder="نام و نام خانوادگی">
+        <input class="modal-input" type="email" id="demoModalEmail" placeholder="ایمیل سازمانی" dir="ltr">
+        <input class="modal-input" type="text" id="demoCompany" placeholder="نام سازمان">
+        <input class="modal-input" type="password" id="demoPass" placeholder="رمز عبور" dir="ltr">
+        <button class="modal-btn" id="demoModalSubmit">ثبت‌نام و شروع ←</button>
+        <div class="modal-switch">قبلاً ثبت‌نام کرده‌اید؟ <span id="switchToLogin">وارد شوید</span></div>
+    </div>
+</div>
+
+<script>
+// ===== Rotating Quote =====
+const quotes = ["📊 داده‌ها حرف می‌زنند، میرا ترجمان آنهاست.", "🧠 از پرسش تا بینش، در کسری از ثانیه.", "⚡ تحلیل داده بدون یک خط کد.", "🔮 آینده فروش خود را پیش‌بینی کن.", "📈 هر سوالی داری، از داده‌هات بپرس."];
+let qi = 0;
+const qEl = document.getElementById('dynamicQuote');
+function rotateQuote() {
+    qEl.style.opacity = '0';
+    setTimeout(() => { qEl.textContent = quotes[qi++ % quotes.length]; qEl.style.opacity = '1'; }, 400);
+}
+rotateQuote();
+setInterval(rotateQuote, 5000);
+
+// ===== Stats (IntersectionObserver) =====
+const statsData = [{ id: 's1', end: 342, suffix: '' }, { id: 's2', end: 2, suffix: '.۴' }, { id: 's3', end: 96, suffix: '' }, { id: 's4', end: 1250, suffix: '' }];
+let statsAnimated = false;
+function animCount(el, end, dur, suffix) {
+    let t0 = null;
+    const step = t => { if (!t0) t0 = t; const p = Math.min((t - t0) / dur, 1); el.textContent = Math.floor(p * end) + suffix; if (p < 1) requestAnimationFrame(step); };
+    requestAnimationFrame(step);
+}
+const statsObs = new IntersectionObserver(entries => {
+    if (entries[0].isIntersecting && !statsAnimated) {
+        statsAnimated = true;
+        statsData.forEach(d => animCount(document.getElementById(d.id), d.end, 2000, d.suffix));
+    }
+}, { threshold: 0.3 });
+statsObs.observe(document.getElementById('statsGrid'));
+
+// ===== FAQ Accordion =====
+document.querySelectorAll('.faq-q').forEach(btn => {
+    btn.addEventListener('click', () => {
+        const item = btn.parentElement;
+        const isOpen = item.classList.contains('open');
+        document.querySelectorAll('.faq-item.open').forEach(i => i.classList.remove('open'));
+        if (!isOpen) item.classList.add('open');
+    });
+});
+
+// ===== Contact =====
+document.getElementById('sendMsgBtn').addEventListener('click', () => {
+    const n = document.getElementById('cName').value;
+    const e = document.getElementById('cEmail').value;
+    const m = document.getElementById('cMsg').value;
+    const s = document.getElementById('contactStatus');
+    if (!n || !e || !m) { s.style.color = '#ff8a7a'; s.textContent = 'لطفاً تمام فیلدها را پر کنید'; return; }
+    s.style.color = '#2cc9b0'; s.textContent = '✔ پیام شما با موفقیت ارسال شد!';
+    document.getElementById('cName').value = '';
+    document.getElementById('cEmail').value = '';
+    document.getElementById('cMsg').value = '';
+    setTimeout(() => s.textContent = '', 4000);
+});
+
+// ===== Auth Modal =====
+const authModal = document.getElementById('authModal');
+let isLogin = true;
+function openAuth(mode) {
+    isLogin = mode === 'login';
+    document.getElementById('authTitle').textContent = isLogin ? 'ورود به میرا' : 'ثبت‌نام در میرا';
+    document.getElementById('authSub').textContent = isLogin ? 'خوش آمدید، با ایمیل وارد شوید' : 'مشخصات خود را ثبت کنید؛ سپس فایل اکسل را آپلود می‌کنید';
+    document.getElementById('authName').style.display = isLogin ? 'none' : 'block';
+    document.getElementById('authDo').textContent = isLogin ? 'ورود' : 'ثبت‌نام و شروع';
+    document.getElementById('authSwitch').innerHTML = isLogin ? 'حساب ندارید؟ <span id="authSwitchLink">ثبت‌نام کنید</span>' : 'حساب دارید؟ <span id="authSwitchLink">وارد شوید</span>';
+    document.getElementById('authSwitchLink').onclick = () => { isLogin = !isLogin; openAuth(isLogin ? 'login' : 'signup'); };
+    authModal.classList.add('show');
+}
+document.getElementById('loginBtn').onclick = () => openAuth('login');
+const signupBtn = document.getElementById('signupBtn');
+if (signupBtn) signupBtn.onclick = () => openAuth('signup');
+document.getElementById('closeAuth').onclick = () => authModal.classList.remove('show');
+authModal.onclick = e => { if (e.target === authModal) authModal.classList.remove('show'); };
+document.getElementById('authDo').onclick = async () => {
+    const email = document.getElementById('authEmail').value.trim();
+    const pass = document.getElementById('authPass').value;
+    const name = document.getElementById('authName').value.trim();
+    if (!email || !pass) { alert('لطفاً ایمیل و رمز عبور را وارد کنید'); return; }
+    if (!isLogin && !name) { alert('لطفاً نام خود را وارد کنید'); return; }
+    const btn = document.getElementById('authDo');
+    btn.disabled = true; const original = btn.textContent; btn.textContent = '...';
+    const endpoint = isLogin ? '/api/login' : '/api/register';
+    const payload = isLogin ? { email, password: pass } : { email, password: pass, name };
+    try {
+        const res = await fetch(endpoint, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+        if (!res.ok) {
+            const e = await res.json().catch(() => ({}));
+            alert(e.detail || (isLogin ? 'ورود ناموفق بود' : 'ثبت‌نام ناموفق بود')); return;
+        }
+        const data = await res.json();
+        localStorage.setItem('mira_token', data.access_token);
+        localStorage.setItem('mira_user', JSON.stringify(data.user || {}));
+        window.location.href = 'MiraChat.html';
+    } catch (err) {
+        alert('ارتباط با سرور برقرار نشد. مطمئن شوید سرور در حال اجراست.');
+    } finally {
+        btn.disabled = false; btn.textContent = original;
+    }
+};
+
+// ===== Demo Modal =====
+const demoModal = document.getElementById('demoModal');
+function openDemo(prefillEmail) {
+    if (prefillEmail) document.getElementById('demoModalEmail').value = prefillEmail;
+    demoModal.classList.add('show');
+}
+function closeDemo() { demoModal.classList.remove('show'); }
+document.getElementById('heroDemoBtn').onclick = () => openDemo('');
+document.getElementById('closeDemoModal').onclick = closeDemo;
+demoModal.onclick = e => { if (e.target === demoModal) closeDemo(); };
+document.getElementById('demoFormBtn').onclick = () => {
+    const email = document.getElementById('demoEmailInput').value;
+    if (!email) { alert('لطفاً ایمیل خود را وارد کنید'); return; }
+    openDemo(email);
+};
+document.getElementById('demoModalSubmit').onclick = async () => {
+    const name = document.getElementById('demoName').value.trim();
+    const email = document.getElementById('demoModalEmail').value.trim();
+    const company = document.getElementById('demoCompany').value.trim();
+    const pass = document.getElementById('demoPass').value;
+    if (!name || !email || !pass) { alert('لطفاً نام، ایمیل و رمز عبور را وارد کنید'); return; }
+    const btn = document.getElementById('demoModalSubmit');
+    btn.disabled = true;
+    const original = btn.textContent;
+    btn.textContent = '...';
+    try {
+        const res = await fetch('/api/register', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email, password: pass, name, company })
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) { alert(data.detail || 'ثبت‌نام ناموفق بود'); return; }
+        localStorage.setItem('mira_token', data.access_token);
+        localStorage.setItem('mira_user', JSON.stringify(data.user || {}));
+        window.location.href = 'MiraChat.html';
+    } catch (err) {
+        alert('ارتباط با سرور برقرار نشد. مطمئن شوید سرور در حال اجراست.');
+    } finally {
+        btn.disabled = false;
+        btn.textContent = original;
+    }
+};
+document.getElementById('switchToLogin').onclick = () => { closeDemo(); openAuth('login'); };
+</script>
+</body>
+</html>
